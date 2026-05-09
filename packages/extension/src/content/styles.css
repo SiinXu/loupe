@@ -48,11 +48,60 @@
    visually disappear on neutral / white host pages. Wrap them in a contrasty
    pill so the toolbar reads against any background. */
 :host [data-annotation-ui].fixed.bottom-6.right-6 > .flex {
-  background: hsl(var(--popover));
-  border: 1px solid hsl(var(--border));
+  background: #ffffff;
+  border: 1px solid #d4d4d4;
   border-radius: 9999px;
   padding: 4px;
   box-shadow:
     0 4px 16px rgb(0 0 0 / 0.12),
     0 1px 3px rgb(0 0 0 / 0.08);
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   Loupe palette — flat, deterministic, decoupled from theme.css cascade.
+
+   Rationale: the @loupe/core Button "default" variant uses a
+   gradient driven by `--btn-primary-from` → `var(--primary)`. That chain
+   sometimes fails to propagate cleanly across the shadow boundary, leaving
+   the bubble's "Save" and selected category buttons rendered as invisible
+   transparent rectangles. The user reported "浅色 button 都不见了".
+
+   These overrides force flat fills with hard-coded colors — guaranteed
+   visible on any host page, regardless of var-chain propagation. They
+   target the buttons via attributes that only @loupe/core sets
+   (data-slot=button), so non-button host markup is unaffected.
+   ──────────────────────────────────────────────────────────────────── */
+
+/* Filled "primary" buttons: Save, selected category, etc. */
+:host [data-annotation-ui] [data-slot="button"][class*="from-[var(--btn-primary-from)]"] {
+  background-image: none;
+  background-color: #323232;
+  color: #fcfcfc;
+  border: 1px solid #1a1a1a;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.15);
+}
+:host [data-annotation-ui] [data-slot="button"][class*="from-[var(--btn-primary-from)]"]:hover {
+  background-color: #1f1f1f;
+}
+:host [data-annotation-ui] [data-slot="button"][class*="from-[var(--btn-primary-from)]"]::before {
+  display: none;
+}
+
+/* Outline buttons: ensure the border is visible on the bubble's near-white
+   bg and on the host page. */
+:host [data-annotation-ui] [data-slot="button"][class*="bg-background"][class*="shadow-button"] {
+  border-color: #d0d0d0;
+}
+
+/* Bubble surface — deterministic color so the inner buttons always have a
+   known contrast target. */
+:host [data-annotation-ui][class*="bg-popover"] {
+  background-color: #ffffff;
+  color: #121212;
+}
+
+/* List & dropdown surfaces — same treatment so menus aren't transparent. */
+:host [data-radix-popper-content-wrapper] [data-slot] {
+  background-color: #ffffff;
+  color: #121212;
 }
