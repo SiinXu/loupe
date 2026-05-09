@@ -1,0 +1,27 @@
+{
+  "name": "loupe-electron-example",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Minimal Electron app demonstrating @loupe/dev-annotator with file persistence.",
+  "type": "module",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && tsc -p tsconfig.electron.json",
+    "start": "pnpm build && electron ."
+  },
+  "dependencies": {
+    "@loupe/dev-annotator": "workspace:*",
+    "react": "19.2.5",
+    "react-dom": "19.2.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.5",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "4.7.0",
+    "electron": "^33.0.0",
+    "typescript": "^5",
+    "vite": "^7"
+  }
+}

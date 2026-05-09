@@ -8,6 +8,40 @@ importers:
 
   .: {}
 
+  examples/electron-app:
+    dependencies:
+      '@loupe/dev-annotator':
+        specifier: workspace:*
+        version: link:../../packages/dev-annotator
+      react:
+        specifier: 19.2.5
+        version: 19.2.5
+      react-dom:
+        specifier: 19.2.5
+        version: 19.2.5(react@19.2.5)
+    devDependencies:
+      '@types/node':
+        specifier: ^22.13.5
+        version: 22.19.18
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.14)
+      '@vitejs/plugin-react':
+        specifier: 4.7.0
+        version: 4.7.0(vite@7.3.3(@types/node@22.19.18)(jiti@2.7.0)(lightningcss@1.32.0))
+      electron:
+        specifier: ^33.0.0
+        version: 33.4.11
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vite:
+        specifier: ^7
+        version: 7.3.3(@types/node@22.19.18)(jiti@2.7.0)(lightningcss@1.32.0)
+
   packages/core:
     dependencies:
       class-variance-authority:

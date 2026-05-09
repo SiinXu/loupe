@@ -1,0 +1,112 @@
+/* Plain CSS — deliberately not using a framework so the demo focuses on Loupe.
+   Loupe's own UI lives in a shadow root, so these styles never collide with it. */
+
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  background: #f6f7f9;
+  color: #1c1c1c;
+}
+
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 24px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.hero h1 {
+  font-size: 28px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  letter-spacing: -0.01em;
+}
+.hero .tagline {
+  margin: 0;
+  color: #5b6068;
+}
+kbd {
+  font: 12px ui-monospace, Menlo, Consolas, monospace;
+  padding: 2px 6px;
+  background: #ececec;
+  border: 1px solid #d0d0d0;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e7e8ea;
+  border-radius: 12px;
+  padding: 20px 24px;
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.02);
+}
+.card h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 14px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.row label {
+  width: 80px;
+  color: #6b7280;
+  font-size: 14px;
+}
+.row input {
+  flex: 1;
+  font: inherit;
+  padding: 8px 12px;
+  border: 1px solid #d4d6da;
+  border-radius: 8px;
+  background: #fbfbfb;
+}
+.row.right {
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.btn {
+  font: inherit;
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px solid #d4d6da;
+  background: #fff;
+  cursor: pointer;
+}
+.btn.primary {
+  background: #1c1c1c;
+  color: #fff;
+  border-color: #1c1c1c;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.list li {
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f1f3;
+}
+.list li:last-child { border: 0; }
+
+.foot {
+  text-align: center;
+  color: #8b8f97;
+  margin-top: 8px;
+}
+.foot code {
+  font-size: 12px;
+  background: #ececec;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
