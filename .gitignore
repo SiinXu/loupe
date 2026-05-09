@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Sourcemaps in published packages (we keep them in dev)
+*.map.gz
+
+# Vite cache
+.vite/
+
+# Chrome extension build artifacts (keep dist/ ignored above; produce zip on demand)
+*.zip
+
+# Test outputs
+coverage/
+.nyc_output/

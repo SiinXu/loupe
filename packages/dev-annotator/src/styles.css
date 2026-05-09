@@ -1,0 +1,22 @@
+@import "tailwindcss";
+@import "@loupe/core/globals.css";
+
+@source "../../core/src/annotations/**/*.{ts,tsx}";
+@source "../../core/src/ui/**/*.{ts,tsx}";
+
+:host {
+  all: initial;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: hsl(var(--foreground));
+  cursor: default;
+}
+
+:host * {
+  box-sizing: border-box;
+}
+
+:host button,
+:host [role="button"],
+:host a {
+  cursor: pointer;
+}

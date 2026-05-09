@@ -1,0 +1,44 @@
+@import "tailwindcss";
+@import "@loupe/core/theme.css";
+@import "@loupe/core/globals.css";
+
+/* Tailwind v4 source detection — scan all source files used at runtime so
+   utility classes from @loupe/core's annotation components actually get
+   generated in the output bundle. */
+@source "../**/*.{ts,tsx}";
+@source "../../../core/src/annotations/**/*.{ts,tsx}";
+@source "../../../core/src/ui/button.tsx";
+@source "../../../core/src/ui/badge.tsx";
+@source "../../../core/src/ui/dropdown-menu.tsx";
+@source "../../../core/src/ui/tabs.tsx";
+@source "../../../core/src/ui/switch.tsx";
+
+/* Constrain Tailwind's preflight to within the shadow root by relying on
+   shadow boundary to isolate. The shadow root is a separate DOM scope so
+   :host applies. */
+
+:host {
+  all: initial;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: hsl(var(--foreground));
+  /* Reset cursor — host page sets body { cursor: crosshair } in annotate mode,
+     which would otherwise inherit into our UI through the shadow boundary. */
+  cursor: default;
+}
+
+/* Don't let any host page styles leak into our root */
+:host * {
+  box-sizing: border-box;
+}
+
+/* Buttons / interactive UI inside shadow always show pointer cursor */
+:host button,
+:host [role="button"],
+:host a {
+  cursor: pointer;
+}
+
+/* Overlay's hover highlight uses crosshair to signal "click to annotate" */
+:host [data-annotation-overlay-cursor="crosshair"] {
+  cursor: crosshair;
+}
