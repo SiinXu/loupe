@@ -18,6 +18,16 @@ This monorepo contains:
 
 - **Browser extension** → [packages/extension/README.md](./packages/extension/README.md)
 - **Electron / Web SDK** → [packages/dev-annotator/README.md](./packages/dev-annotator/README.md)
+- **Working Electron example** (file-backed persistence) → [examples/electron-app](./examples/electron-app)
+- **DevTools snippet** (zero install — paste into any shipped Electron app or web page) → [examples/devtools-snippet](./examples/devtools-snippet)
+
+## Pick the right path
+
+| Your situation | Use |
+|---|---|
+| Browsing the web, want to annotate any site | **Browser extension** — install once, works on every `https://` page |
+| Your own Electron / web app, dev mode | **`@loupe/dev-annotator` SDK** — 3-step integration with file persistence |
+| A shipped Electron app you don't own (Slack, VSCode, Cursor…) or any live site | **DevTools snippet** — paste into Console, zero install |
 
 ---
 
