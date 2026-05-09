@@ -4,17 +4,23 @@ import { CheckCircle2, Circle, Filter, Trash2, X, AlertTriangle } from "lucide-r
 import { Button } from "../ui/button"
 import { Badge } from "../ui/badge"
 import { useAnnotationContext } from "./annotation-provider"
-import type { AnnotationCategory } from "./types"
+import type { AnnotationCategory, AnnotationMessages } from "./types"
 
-const FILTER_CATEGORIES: { value: AnnotationCategory | "all"; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "bug", label: "Bug" },
-  { value: "style", label: "Style" },
-  { value: "layout", label: "Layout" },
-  { value: "interaction", label: "Inter." },
-  { value: "content", label: "Content" },
-  { value: "other", label: "Other" },
+const FILTER_VALUES: (AnnotationCategory | "all")[] = [
+  "all", "bug", "style", "layout", "interaction", "content", "other",
 ]
+
+function filterLabel(v: AnnotationCategory | "all", m: AnnotationMessages): string {
+  switch (v) {
+    case "all": return m.categoryAll
+    case "bug": return m.categoryBug
+    case "style": return m.categoryStyle
+    case "layout": return m.categoryLayout
+    case "interaction": return m.categoryInteractionShort
+    case "content": return m.categoryContent
+    case "other": return m.categoryOther
+  }
+}
 
 interface AnnotationListProps {
   open: boolean
@@ -28,6 +34,7 @@ export function AnnotationList({ open, onClose }: AnnotationListProps) {
     removeAnnotation,
     page,
     portalContainer,
+    messages,
   } = useAnnotationContext()
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -85,7 +92,7 @@ export function AnnotationList({ open, onClose }: AnnotationListProps) {
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
         <div className="flex items-center gap-2">
-          <span className="text-[length:var(--fs-sm)] font-medium">Annotations</span>
+          <span className="text-[length:var(--fs-sm)] font-medium">{messages.listTitle}</span>
           <Badge variant="secondary">{page}</Badge>
           <Badge variant="outline" className="text-[length:var(--fs-xs)]">{filtered.length}</Badge>
         </div>
@@ -94,7 +101,7 @@ export function AnnotationList({ open, onClose }: AnnotationListProps) {
             variant={showFilters ? "default" : "ghost"}
             size="icon-xs"
             onClick={() => setShowFilters(!showFilters)}
-            title="Filter"
+            title={messages.filterTooltip}
           >
             <Filter className="size-3.5" />
           </Button>
@@ -107,19 +114,19 @@ export function AnnotationList({ open, onClose }: AnnotationListProps) {
       {/* Filter bar */}
       {showFilters && (
         <div className="flex flex-wrap gap-1 px-3 py-2 border-b border-border/50 bg-muted/30">
-          {FILTER_CATEGORIES.map((cat) => {
-            const count = cat.value === "all"
+          {FILTER_VALUES.map((value) => {
+            const count = value === "all"
               ? annotations.length
-              : annotations.filter((a) => a.category === cat.value).length
+              : annotations.filter((a) => a.category === value).length
             return (
               <Button
-                key={cat.value}
-                variant={filterCategory === cat.value ? "default" : "outline"}
+                key={value}
+                variant={filterCategory === value ? "default" : "outline"}
                 size="inline"
-                onClick={() => setFilterCategory(cat.value)}
+                onClick={() => setFilterCategory(value)}
                 className="text-[length:var(--fs-xs)]"
               >
-                {cat.label}
+                {filterLabel(value, messages)}
                 {count > 0 && <span className="ml-0.5 opacity-60">{count}</span>}
               </Button>
             )
@@ -132,12 +139,12 @@ export function AnnotationList({ open, onClose }: AnnotationListProps) {
         {filtered.length === 0 ? (
           <div className="p-4 text-center text-[length:var(--fs-sm)] text-muted-foreground">
             {filterCategory !== "all" ? (
-              <>No {filterCategory} annotations on this page.</>
+              <>{messages.listEmptyFiltered(filterLabel(filterCategory, messages))}</>
             ) : (
               <>
-                No annotations on this page yet.
+                {messages.listEmpty}
                 <br />
-                <span className="text-[length:var(--fs-xs)]">Enable annotation mode (⌘⇧X) and click on elements to add comments.</span>
+                <span className="text-[length:var(--fs-xs)]">{messages.listEmptyHint}</span>
               </>
             )}
           </div>
@@ -160,12 +167,12 @@ export function AnnotationList({ open, onClose }: AnnotationListProps) {
                     {ann.orphaned && (
                       <Badge variant="destructive" className="text-[length:var(--fs-xs)] px-1 py-0">
                         <AlertTriangle className="size-2.5 mr-0.5" />
-                        orphaned
+                        {messages.orphaned}
                       </Badge>
                     )}
                     {ann.category && (
                       <Badge variant="outline" className="text-[length:var(--fs-xs)] px-1 py-0">
-                        {ann.category}
+                        {filterLabel(ann.category, messages)}
                       </Badge>
                     )}
                     {ann.sourceHint && (
@@ -184,7 +191,7 @@ export function AnnotationList({ open, onClose }: AnnotationListProps) {
                     variant="ghost"
                     size="icon-xs"
                     onClick={(e) => { e.stopPropagation(); resolveAnnotation(ann.id) }}
-                    title="Resolve"
+                    title={messages.resolve}
                   >
                     <Circle className="size-3" />
                   </Button>
@@ -192,7 +199,7 @@ export function AnnotationList({ open, onClose }: AnnotationListProps) {
                     variant="ghost"
                     size="icon-xs"
                     onClick={(e) => { e.stopPropagation(); removeAnnotation(ann.id) }}
-                    title="Delete"
+                    title={messages.delete}
                   >
                     <Trash2 className="size-3 text-destructive" />
                   </Button>
@@ -204,7 +211,7 @@ export function AnnotationList({ open, onClose }: AnnotationListProps) {
             {resolved.length > 0 && (
               <>
                 <div className="px-3 py-1.5 text-[length:var(--fs-xs)] font-medium text-muted-foreground uppercase tracking-wider bg-muted/30">
-                  Resolved ({resolved.length})
+                  {messages.resolvedHeader(resolved.length)}
                 </div>
                 {resolved.map((ann) => (
                   <div
@@ -221,7 +228,7 @@ export function AnnotationList({ open, onClose }: AnnotationListProps) {
                         variant="ghost"
                         size="icon-xs"
                         onClick={(e) => { e.stopPropagation(); resolveAnnotation(ann.id) }}
-                        title="Unresolve"
+                        title={messages.unresolve}
                       >
                         <AlertTriangle className="size-3" />
                       </Button>
@@ -229,7 +236,7 @@ export function AnnotationList({ open, onClose }: AnnotationListProps) {
                         variant="ghost"
                         size="icon-xs"
                         onClick={(e) => { e.stopPropagation(); removeAnnotation(ann.id) }}
-                        title="Delete"
+                        title={messages.delete}
                       >
                         <Trash2 className="size-3 text-destructive" />
                       </Button>

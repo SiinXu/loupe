@@ -363,6 +363,21 @@ function SettingsPanel() {
       <hr className="border-border" />
 
       <div>
+        <h3 className="text-sm font-medium mb-2">{t("settings.theme")}</h3>
+        <select
+          className="w-full rounded-[var(--radius-button)] border border-input bg-background px-2 py-1.5 text-sm"
+          value={settings.theme || "auto"}
+          onChange={(e) => update({ theme: e.target.value as ExtensionSettings["theme"] })}
+        >
+          <option value="auto">{t("settings.theme.auto")}</option>
+          <option value="light">{t("settings.theme.light")}</option>
+          <option value="dark">{t("settings.theme.dark")}</option>
+        </select>
+      </div>
+
+      <hr className="border-border" />
+
+      <div>
         <h3 className="text-sm font-medium mb-2">{t("settings.captureOptions")}</h3>
         <label className="flex items-center justify-between text-sm">
           <span>{t("settings.captureScreenshots")}</span>

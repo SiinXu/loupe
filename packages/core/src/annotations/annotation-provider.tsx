@@ -6,7 +6,8 @@ import React, {
   useRef,
   useState,
 } from "react"
-import type { Annotation, AnnotationContextValue } from "./types"
+import type { Annotation, AnnotationContextValue, AnnotationMessages } from "./types"
+import { DEFAULT_ANNOTATION_MESSAGES } from "./types"
 import {
   loadAnnotations,
   saveAnnotations,
@@ -57,6 +58,11 @@ interface AnnotationProviderProps {
   getSourceHint?: (el: HTMLElement) => string
   /** Custom action buttons rendered in bubble view mode */
   bubbleActions?: import("./types").BubbleAction[]
+  /**
+   * Localized UI strings — pass overrides for any subset; missing keys fall
+   * back to {@link DEFAULT_ANNOTATION_MESSAGES} (English).
+   */
+  messages?: Partial<AnnotationMessages>
 }
 
 export function AnnotationProvider({
@@ -70,7 +76,13 @@ export function AnnotationProvider({
   disablePageFilter = false,
   getSourceHint,
   bubbleActions,
+  messages: messagesOverride,
 }: AnnotationProviderProps) {
+  // Merge once per render; cheap (~30 string copies) and stable enough for
+  // consumers that only re-read on render anyway.
+  const messages: AnnotationMessages = messagesOverride
+    ? { ...DEFAULT_ANNOTATION_MESSAGES, ...messagesOverride }
+    : DEFAULT_ANNOTATION_MESSAGES
   const [allAnnotations, setAllAnnotations] = useState<Annotation[]>(() =>
     disablePersistence ? [] : loadAnnotations(storageKey),
   )
@@ -149,6 +161,7 @@ export function AnnotationProvider({
     portalContainer: portalContainer ?? null,
     getSourceHint,
     bubbleActions,
+    messages,
   }
 
   return (

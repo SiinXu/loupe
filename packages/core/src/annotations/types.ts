@@ -58,6 +58,124 @@ export interface BubbleAction {
   }>
 }
 
+/**
+ * UI strings for the annotation components. Pass overrides via
+ * `<AnnotationProvider messages={...}>` to localize. Missing keys fall back
+ * to {@link DEFAULT_ANNOTATION_MESSAGES} (English).
+ */
+export interface AnnotationMessages {
+  // Bubble — header + actions
+  addAnnotation: string
+  resolved: string
+  annotation: string
+  cancel: string
+  save: string
+  saveHint: string                        // "⌘+Enter to save"
+  describePlaceholder: string
+  showPresets: string
+  customInputTitle: string                // tooltip on the empty preset
+  hideStyles: string
+  showStyleDiff: string
+  /** "{n} changed" — n style fields differ from saved */
+  changedCount: (n: number) => string
+  copyAsPrompt: string
+  edit: string
+  resolve: string
+  unresolve: string
+  delete: string
+
+  // Categories (shared by bubble + list filter)
+  categoryAll: string
+  categoryStyle: string
+  categoryLayout: string
+  categoryInteraction: string
+  /** Short form used in the list filter bar (defaults to "Inter.") */
+  categoryInteractionShort: string
+  categoryContent: string
+  categoryBug: string
+  categoryOther: string
+
+  // List
+  listTitle: string                       // "Annotations"
+  filterTooltip: string
+  /** "No annotations on this page yet." */
+  listEmpty: string
+  /** Sub-line shown on the empty list */
+  listEmptyHint: string
+  /** "No {category} annotations on this page." */
+  listEmptyFiltered: (category: string) => string
+  /** "Resolved (n)" section header */
+  resolvedHeader: (n: number) => string
+  orphaned: string
+
+  // Toggle / dropdown menu
+  exportJson: string
+  copyJson: string
+  copied: string
+  copyAiPrompt: string
+  importJson: string
+  showList: string
+  hideList: string
+  clearResolved: string
+  clearAll: string
+  enterAnnotationMode: string
+  exitAnnotationMode: string
+  /** Confirm dialog when wiping everything */
+  confirmClearAll: string
+  invalidImportFile: string
+}
+
+export const DEFAULT_ANNOTATION_MESSAGES: AnnotationMessages = {
+  addAnnotation: "Add Annotation",
+  resolved: "Resolved",
+  annotation: "Annotation",
+  cancel: "Cancel",
+  save: "Save",
+  saveHint: "⌘+Enter to save",
+  describePlaceholder: "Describe the issue or change needed…",
+  showPresets: "Show preset templates",
+  customInputTitle: "Custom input",
+  hideStyles: "Hide styles",
+  showStyleDiff: "Show style diff",
+  changedCount: (n) => `${n} changed`,
+  copyAsPrompt: "Copy as AI Prompt",
+  edit: "Edit",
+  resolve: "Resolve",
+  unresolve: "Unresolve",
+  delete: "Delete",
+
+  categoryAll: "All",
+  categoryStyle: "Style",
+  categoryLayout: "Layout",
+  categoryInteraction: "Interaction",
+  categoryInteractionShort: "Inter.",
+  categoryContent: "Content",
+  categoryBug: "Bug",
+  categoryOther: "Other",
+
+  listTitle: "Annotations",
+  filterTooltip: "Filter",
+  listEmpty: "No annotations on this page yet.",
+  listEmptyHint: "Enable annotation mode (⌘⇧X) and click on elements to add comments.",
+  listEmptyFiltered: (category) => `No ${category} annotations on this page.`,
+  resolvedHeader: (n) => `Resolved (${n})`,
+  orphaned: "orphaned",
+
+  exportJson: "Export JSON",
+  copyJson: "Copy JSON",
+  copied: "Copied!",
+  copyAiPrompt: "Copy AI Prompt",
+  importJson: "Import JSON",
+  showList: "Show List",
+  hideList: "Hide List",
+  clearResolved: "Clear Resolved",
+  clearAll: "Clear All",
+  enterAnnotationMode: "Enter annotation mode (⌘⇧X)",
+  exitAnnotationMode: "Exit annotation mode (⌘⇧X)",
+  confirmClearAll: "Clear all annotations? This cannot be undone.",
+  invalidImportFile: "Invalid annotation JSON file.",
+}
+
 export interface AnnotationContextValue {
   /** All annotations (all pages) */
   allAnnotations: Annotation[]
@@ -93,4 +211,6 @@ export interface AnnotationContextValue {
    * Each one receives the annotation and a close handler.
    */
   bubbleActions?: BubbleAction[]
+  /** Localized UI strings (always merged with defaults; never null). */
+  messages: AnnotationMessages
 }

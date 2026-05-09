@@ -59,24 +59,62 @@ function mount(): void {
   // ─── Color scheme (light/dark) ──────────────────────────────────────────
   // The theme CSS defines `.dark { ... }` overrides. Since shadow DOM is its
   // own scope, we toggle a `dark` class on the React root so descendants
-  // pick up the overrides. Follows: host page's `<html class="dark">` first,
-  // then OS `prefers-color-scheme`.
+  // pick up the overrides.
+  //
+  // Resolution order:
+  //   1. user override (Settings → Theme: light | dark)  takes priority
+  //   2. host page signals: <html|body> class="dark" / data-theme="dark"
+  //   3. OS  prefers-color-scheme: dark
+  let userTheme: "auto" | "light" | "dark" = "auto"
+
+  const detectHostDark = (): boolean => {
+    const htmlEl = document.documentElement
+    const bodyEl = document.body
+    const hostFlagged =
+      htmlEl.classList.contains("dark") ||
+      htmlEl.getAttribute("data-theme") === "dark" ||
+      (bodyEl?.classList.contains("dark") ?? false) ||
+      bodyEl?.getAttribute("data-theme") === "dark"
+    if (hostFlagged) return true
+    return matchMedia("(prefers-color-scheme: dark)").matches
+  }
+
   const applyColorScheme = () => {
-    const hostHtmlIsDark =
-      document.documentElement.classList.contains("dark") ||
-      document.documentElement.getAttribute("data-theme") === "dark"
-    const systemIsDark = matchMedia("(prefers-color-scheme: dark)").matches
-    const dark = hostHtmlIsDark || systemIsDark
+    const dark = userTheme === "dark" || (userTheme === "auto" && detectHostDark())
     reactRoot.classList.toggle("dark", dark)
   }
+
+  // Hydrate user override from chrome.storage, then react to settings changes
+  if (chrome?.storage?.local) {
+    chrome.storage.local.get("marker:settings", (result) => {
+      const t = (result["marker:settings"] as { theme?: typeof userTheme } | undefined)?.theme
+      if (t === "light" || t === "dark" || t === "auto") userTheme = t
+      applyColorScheme()
+    })
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local" || !changes["marker:settings"]) return
+      const t = (changes["marker:settings"].newValue as { theme?: typeof userTheme } | undefined)?.theme
+      userTheme = t === "light" || t === "dark" ? t : "auto"
+      applyColorScheme()
+    })
+  }
+
   applyColorScheme()
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyColorScheme)
-  // Watch host page <html> for class/theme attribute changes so dark mode
-  // toggles on the host (e.g. Claude.ai's theme switch) propagate immediately.
-  new MutationObserver(applyColorScheme).observe(document.documentElement, {
+  // Watch host page <html> + <body> for class/theme attribute changes so
+  // dark-mode toggles on the host (e.g. Claude.ai's theme switch) propagate
+  // immediately when userTheme is "auto".
+  const themeObserver = new MutationObserver(applyColorScheme)
+  themeObserver.observe(document.documentElement, {
     attributes: true,
     attributeFilter: ["class", "data-theme"],
   })
+  if (document.body) {
+    themeObserver.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["class", "data-theme"],
+    })
+  }
 
   createRoot(reactRoot).render(<ContentApp shadowRoot={shadow} />)
 

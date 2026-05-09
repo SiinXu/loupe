@@ -11,4 +11,11 @@ const applyTheme = (m: { matches: boolean }) =>
 applyTheme(mq)
 mq.addEventListener("change", applyTheme)
 
+// Distinguish popup mode (Chrome auto-sizes the action popup) from tab mode
+// (opened via chrome.tabs.create — e.g. the welcome page "Open Settings"
+// link). Style overrides key off html[data-mode] so the same React tree
+// renders correctly in both contexts.
+const isTabMode = window.location.search.length > 0
+document.documentElement.dataset.mode = isTabMode ? "tab" : "popup"
+
 createRoot(document.getElementById("root")!).render(<Popup />)

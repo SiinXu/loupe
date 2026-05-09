@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { Component, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import {
   AnnotationProvider,
   AnnotationOverlay,
@@ -6,11 +6,13 @@ import {
   AnnotationList,
   useAnnotations,
   type Annotation,
+  type AnnotationMessages,
   type BubbleAction,
 } from "@loupe/core"
 import { loadAnnotationsFor, saveAnnotationsFor, onAnnotationsChanged, loadSettings } from "../shared/storage"
 import { captureElementScreenshot } from "../shared/screenshot"
 import { getReactSourceHint } from "../shared/fiber"
+import { useT } from "../shared/i18n"
 import { FileIssueAction } from "./BubbleActions"
 
 interface ContentAppProps {
@@ -33,6 +35,58 @@ export function ContentApp({ shadowRoot }: ContentAppProps) {
   const [hydrated, setHydrated] = useState(false)
   const [listOpen, setListOpen] = useState(false)
   const origin = window.location.origin
+  const { t, locale } = useT()
+
+  // Build a stable AnnotationMessages object from the extension's i18n.
+  // Re-derived only when locale changes — bubble/list/toggle re-render then.
+  const messages = useMemo<Partial<AnnotationMessages>>(() => ({
+    addAnnotation: t("ann.addAnnotation"),
+    resolved: t("ann.resolved"),
+    annotation: t("ann.annotation"),
+    cancel: t("ann.cancel"),
+    save: t("ann.save"),
+    saveHint: t("ann.saveHint"),
+    describePlaceholder: t("ann.describePlaceholder"),
+    showPresets: t("ann.showPresets"),
+    customInputTitle: t("ann.customInputTitle"),
+    hideStyles: t("ann.hideStyles"),
+    showStyleDiff: t("ann.showStyleDiff"),
+    changedCount: (n: number) => t("ann.changedCount", { n }),
+    copyAsPrompt: t("ann.copyAsPrompt"),
+    edit: t("ann.edit"),
+    resolve: t("ann.resolve"),
+    unresolve: t("ann.unresolve"),
+    delete: t("ann.delete"),
+    categoryAll: t("ann.cat.all"),
+    categoryStyle: t("ann.cat.style"),
+    categoryLayout: t("ann.cat.layout"),
+    categoryInteraction: t("ann.cat.interaction"),
+    categoryInteractionShort: t("ann.cat.interactionShort"),
+    categoryContent: t("ann.cat.content"),
+    categoryBug: t("ann.cat.bug"),
+    categoryOther: t("ann.cat.other"),
+    listTitle: t("ann.list.title"),
+    filterTooltip: t("ann.list.filter"),
+    listEmpty: t("ann.list.empty"),
+    listEmptyHint: t("ann.list.emptyHint"),
+    listEmptyFiltered: (category: string) => t("ann.list.emptyFiltered", { category }),
+    resolvedHeader: (n: number) => t("ann.list.resolvedHeader", { n }),
+    orphaned: t("ann.list.orphaned"),
+    exportJson: t("ann.menu.exportJson"),
+    copyJson: t("ann.menu.copyJson"),
+    copied: t("ann.menu.copied"),
+    copyAiPrompt: t("ann.menu.copyAiPrompt"),
+    importJson: t("ann.menu.importJson"),
+    showList: t("ann.menu.showList"),
+    hideList: t("ann.menu.hideList"),
+    clearResolved: t("ann.menu.clearResolved"),
+    clearAll: t("ann.menu.clearAll"),
+    enterAnnotationMode: t("ann.menu.enter"),
+    exitAnnotationMode: t("ann.menu.exit"),
+    confirmClearAll: t("ann.menu.confirmClearAll"),
+    invalidImportFile: t("ann.menu.invalidImport"),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [locale])
 
   useEffect(() => {
     loadAnnotationsFor(origin)
@@ -54,25 +108,28 @@ export function ContentApp({ shadowRoot }: ContentAppProps) {
     [],
   )
 
-  // Portal target inside our shadow root.
-  // Created synchronously once, side effects done outside React's render
-  // (avoiding StrictMode double-execution surprises). useRef holds the stable
-  // reference; if shadow root already has the div from a prior mount, reuse it.
-  const portalContainerRef = useRef<HTMLElement | null>(null)
-  if (!portalContainerRef.current) {
-    const existing = shadowRoot.getElementById("marker-portal-target") as HTMLElement | null
-    if (existing) {
-      portalContainerRef.current = existing
-    } else {
-      const el = document.createElement("div")
+  // Portal target inside our shadow root. Attach via useLayoutEffect so DOM
+  // mutation happens outside React's render phase (no StrictMode surprises),
+  // but lands before paint so the first AnnotationProvider render sees it.
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null)
+  useLayoutEffect(() => {
+    let el = shadowRoot.getElementById("marker-portal-target") as HTMLElement | null
+    if (!el) {
+      el = document.createElement("div")
       el.id = "marker-portal-target"
       shadowRoot.appendChild(el)
-      portalContainerRef.current = el
     }
-  }
-  const portalContainer = portalContainerRef.current
+    setPortalContainer(el)
+  }, [shadowRoot])
+
+  // Defer rendering the provider tree until the portal target is attached.
+  // Without this, AnnotationToggle would briefly portal into document.body
+  // (the shadow-stylesheet doesn't reach there → unstyled FAB on the host
+  // page, which the user reports as "buttons don't appear").
+  if (!portalContainer) return null
 
   return (
+    <RenderErrorBoundary>
     <AnnotationProvider
       page={getPageId()}
       boundarySelector="body"
@@ -82,6 +139,7 @@ export function ContentApp({ shadowRoot }: ContentAppProps) {
       disablePageFilter
       getSourceHint={fiberSourceHint}
       bubbleActions={bubbleActions}
+      messages={messages}
     >
       <StoragePersistence origin={origin} initial={initialAnnotations} hydrated={hydrated} />
       <CommandBridge />
@@ -89,8 +147,51 @@ export function ContentApp({ shadowRoot }: ContentAppProps) {
       <AnnotationOverlay />
       <AnnotationToggle onToggleList={() => setListOpen((v) => !v)} listOpen={listOpen} />
       <AnnotationList open={listOpen} onClose={() => setListOpen(false)} />
+      <MountAcknowledger />
     </AnnotationProvider>
+    </RenderErrorBoundary>
   )
+}
+
+/**
+ * Logs once after the React tree commits — proves the FAB markup actually
+ * rendered, not just that the content script ran. Pairs with the script-load
+ * log in `index.tsx` to disambiguate "script ran" vs "tree mounted".
+ */
+function MountAcknowledger() {
+  useEffect(() => {
+    console.info(
+      "%c[Loupe]%c React tree mounted",
+      "background:#000;color:#fff;padding:1px 5px;border-radius:3px;font-weight:600;",
+      "color:#999;",
+    )
+  }, [])
+  return null
+}
+
+/**
+ * Surfaces render-time errors that React would otherwise log only via the
+ * default error overlay (which doesn't exist in extension content scripts).
+ * Without this, a throw inside any annotation component leaves the shadow
+ * root mounted but visually empty — exactly the "buttons don't appear"
+ * symptom the user reported.
+ */
+class RenderErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null }
+  static getDerivedStateFromError(error: Error) { return { error } }
+  componentDidCatch(error: Error, info: { componentStack?: string }) {
+    console.error(
+      "%c[Loupe]%c render error — UI is hidden until reload",
+      "background:#c00;color:#fff;padding:1px 5px;border-radius:3px;font-weight:600;",
+      "color:#c00;",
+      error,
+      info.componentStack,
+    )
+  }
+  render() {
+    if (this.state.error) return null
+    return this.props.children
+  }
 }
 
 /**

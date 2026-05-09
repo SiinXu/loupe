@@ -42,3 +42,17 @@
 :host [data-annotation-overlay-cursor="crosshair"] {
   cursor: crosshair;
 }
+
+/* FAB visibility: AnnotationToggle renders two circular buttons in the
+   bottom-right corner. With just the default `outline` button variant they
+   visually disappear on neutral / white host pages. Wrap them in a contrasty
+   pill so the toolbar reads against any background. */
+:host [data-annotation-ui].fixed.bottom-6.right-6 > .flex {
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  border-radius: 9999px;
+  padding: 4px;
+  box-shadow:
+    0 4px 16px rgb(0 0 0 / 0.12),
+    0 1px 3px rgb(0 0 0 / 0.08);
+}

@@ -38,6 +38,7 @@ export function AnnotationToggle({ onToggleList, listOpen }: AnnotationTogglePro
     importAnnotations,
     removeAnnotation,
     portalContainer,
+    messages,
   } = useAnnotationContext()
 
   const [copied, setCopied] = useState(false)
@@ -102,7 +103,7 @@ export function AnnotationToggle({ onToggleList, listOpen }: AnnotationTogglePro
       if (result && result.length > 0) {
         importAnnotations(result)
       } else {
-        alert("Invalid annotation JSON file.")
+        alert(messages.invalidImportFile)
       }
     }
     reader.readAsText(file)
@@ -111,7 +112,7 @@ export function AnnotationToggle({ onToggleList, listOpen }: AnnotationTogglePro
   }
 
   const handleClearAll = () => {
-    if (!confirm("Clear all annotations? This cannot be undone.")) return
+    if (!confirm(messages.confirmClearAll)) return
     for (const ann of [...allAnnotations]) {
       removeAnnotation(ann.id)
     }
@@ -149,7 +150,7 @@ export function AnnotationToggle({ onToggleList, listOpen }: AnnotationTogglePro
           >
             <DropdownMenuItem onClick={handleExport}>
               <Download />
-              Export JSON
+              {messages.exportJson}
               {totalCount > 0 && (
                 <Badge variant="secondary" className="ml-auto mr-1">{totalCount}</Badge>
               )}
@@ -157,31 +158,31 @@ export function AnnotationToggle({ onToggleList, listOpen }: AnnotationTogglePro
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleCopy}>
               <Clipboard />
-              {copied ? "Copied!" : "Copy JSON"}
+              {copied ? messages.copied : messages.copyJson}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleCopyPrompt}>
               <Sparkles />
-              {copiedPrompt ? "Copied!" : "Copy AI Prompt"}
+              {copiedPrompt ? messages.copied : messages.copyAiPrompt}
               <DropdownMenuShortcut>⌘⇧F</DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleImport}>
               <Upload />
-              Import JSON
+              {messages.importJson}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             {onToggleList && (
               <DropdownMenuItem onClick={onToggleList}>
                 <List />
-                {listOpen ? "Hide List" : "Show List"}
+                {listOpen ? messages.hideList : messages.showList}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={handleClearResolved}>
               <CheckCircle2 />
-              Clear Resolved
+              {messages.clearResolved}
             </DropdownMenuItem>
             <DropdownMenuItem variant="destructive" onClick={handleClearAll}>
               <Trash2 />
-              Clear All
+              {messages.clearAll}
               <DropdownMenuShortcut className="text-destructive/70">⌘⇧D</DropdownMenuShortcut>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -193,7 +194,7 @@ export function AnnotationToggle({ onToggleList, listOpen }: AnnotationTogglePro
           size="icon-lg"
           className={`rounded-full shadow-lg relative ${enabled ? "ring-4 ring-primary/20" : ""}`}
           onClick={() => setEnabled(!enabled)}
-          title={enabled ? "Exit annotation mode (⌘⇧X)" : "Enter annotation mode (⌘⇧X)"}
+          title={enabled ? messages.exitAnnotationMode : messages.enterAnnotationMode}
         >
           <MessageSquarePlus className="size-5" />
           {count > 0 && (

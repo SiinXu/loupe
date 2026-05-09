@@ -20,6 +20,12 @@ export interface ExtensionSettings {
   captureScreenshots?: boolean
   /** Default issue tracker: github | linear | none */
   issueTracker?: "github" | "linear" | "none"
+  /**
+   * Color scheme for the in-page UI.
+   *  - "auto"  follow host page (`<html class="dark">` etc) → fall back to OS
+   *  - "light" / "dark" force regardless of host
+   */
+  theme?: "auto" | "light" | "dark"
 }
 
 const isExtensionContext = typeof chrome !== "undefined" && chrome.storage?.local
