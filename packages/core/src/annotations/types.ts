@@ -114,6 +114,8 @@ export interface AnnotationMessages {
   copied: string
   copyAiPrompt: string
   importJson: string
+  /** "Extract Design Spec" — scan the page and dump tokens */
+  extractDesignSpec: string
   showList: string
   hideList: string
   clearResolved: string
@@ -166,6 +168,7 @@ export const DEFAULT_ANNOTATION_MESSAGES: AnnotationMessages = {
   copied: "Copied!",
   copyAiPrompt: "Copy AI Prompt",
   importJson: "Import JSON",
+  extractDesignSpec: "Extract Design Spec",
   showList: "Show List",
   hideList: "Hide List",
   clearResolved: "Clear Resolved",

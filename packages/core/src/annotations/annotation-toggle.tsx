@@ -9,6 +9,7 @@ import {
   Trash2,
   CheckCircle2,
   Sparkles,
+  Palette,
 } from "lucide-react"
 import { Button } from "../ui/button"
 import {
@@ -22,6 +23,7 @@ import {
 import { Badge } from "../ui/badge"
 import { useAnnotationContext } from "./annotation-provider"
 import { downloadJSON, copyJSON, parseImportJSON } from "./utils"
+import { extractDesignSpec, formatDesignSpecMarkdown } from "./extract-design-spec"
 
 interface AnnotationToggleProps {
   onToggleList?: () => void
@@ -43,6 +45,7 @@ export function AnnotationToggle({ onToggleList, listOpen }: AnnotationTogglePro
 
   const [copied, setCopied] = useState(false)
   const [copiedPrompt, setCopiedPrompt] = useState(false)
+  const [extracted, setExtracted] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -118,6 +121,21 @@ export function AnnotationToggle({ onToggleList, listOpen }: AnnotationTogglePro
     }
   }
 
+  const handleExtractSpec = async () => {
+    // Run extraction asynchronously so the dropdown can close cleanly first
+    await new Promise((r) => setTimeout(r, 0))
+    const spec = extractDesignSpec()
+    const md = formatDesignSpecMarkdown(spec)
+    // Download the full structured JSON …
+    downloadJSON(JSON.stringify(spec, null, 2), `design-spec-${spec.origin.replace(/^https?:\/\//, "").replace(/[^\w.-]/g, "_")}.json`)
+    // … and copy the human/AI-friendly markdown to the clipboard
+    const ok = await copyJSON(md)
+    if (ok) {
+      setExtracted(true)
+      setTimeout(() => setExtracted(false), 2500)
+    }
+  }
+
   const handleClearResolved = () => {
     const resolved = allAnnotations.filter((a) => a.resolved)
     if (resolved.length === 0) return
@@ -168,6 +186,11 @@ export function AnnotationToggle({ onToggleList, listOpen }: AnnotationTogglePro
             <DropdownMenuItem onClick={handleImport}>
               <Upload />
               {messages.importJson}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleExtractSpec}>
+              <Palette />
+              {extracted ? messages.copied : messages.extractDesignSpec}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             {onToggleList && (
