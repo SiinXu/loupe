@@ -29,11 +29,34 @@ function mount(): void {
   // will use position: fixed to render at full viewport.
   host.style.cssText =
     "all: initial; position: fixed; top: 0; left: 0; width: 0; height: 0; z-index: 2147483647;"
-  // Attach to <html> (documentElement), NOT <body>. Many sites apply
-  // `transform` / `will-change` / `filter` / `contain` to body or some
-  // ancestor inside body, which breaks `position: fixed` for descendants.
-  // Anchoring at <html> sidesteps this.
-  document.documentElement.appendChild(host)
+  // Attach point: prefer <body> (silences the aria-hidden npm package's
+  // "not contained inside HTMLBodyElement" warning, which is logged on
+  // every dialog open across many sites). Fall back to <html> when body
+  // (or its style) creates a containing block for fixed descendants —
+  // transform / perspective / filter / will-change-transform / contain
+  // would otherwise break our shadow children's `position: fixed`.
+  document.documentElement.appendChild(host) // start in html …
+  // …then move to body if safe. Done after initial attach so that even if
+  // body isn't ready yet (run_at: document_idle should mean it is, but be
+  // defensive), we have a valid parent.
+  const moveToBodyIfSafe = () => {
+    const body = document.body
+    if (!body || host.parentElement === body) return
+    const cs = getComputedStyle(body)
+    const wc = cs.willChange || ""
+    const containedFixed =
+      cs.transform !== "none" ||
+      cs.perspective !== "none" ||
+      cs.filter !== "none" ||
+      wc.includes("transform") ||
+      wc.includes("perspective") ||
+      wc.includes("filter") ||
+      cs.contain.includes("paint") ||
+      cs.contain.includes("layout") ||
+      cs.contain.includes("strict")
+    if (!containedFixed) body.appendChild(host)
+  }
+  moveToBodyIfSafe()
 
   // ─── Property-level lock against external a11y libraries ───────────────
   // Some sites (vibecafe.ai, certain Radix wrappers) bypass our
