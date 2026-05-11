@@ -17,8 +17,38 @@
 | Your situation | Use this | Setup |
 |---|---|---|
 | 🌐 Browsing the web, want to annotate any site | **Browser extension** | Install from Chrome Web Store *(coming soon)* or load unpacked from [`packages/extension`](./packages/extension) |
-| 🛠 Your own Electron / web app in dev mode | **`@loupe/dev-annotator` SDK** | `npm i @loupe/dev-annotator` + 3 lines — see [`packages/dev-annotator`](./packages/dev-annotator) |
+| 🛠 Your own Electron / web app in dev mode | **`@loupe/dev-annotator` SDK** | `npm i @loupe/dev-annotator` + 3 lines — see below |
 | 🚀 A shipped Electron app you don't own (Slack, VSCode, Cursor…) or any site | **DevTools snippet** | Paste 8 lines into the Console — see [`examples/devtools-snippet`](./examples/devtools-snippet) |
+
+---
+
+## Quick start — SDK for app developers
+
+You're building an Electron / web app and want Loupe living inside it during development. Add one dev dependency and three lines to your renderer entry. Done.
+
+```bash
+npm i -D @loupe/dev-annotator
+```
+
+```ts
+// renderer entry — main.tsx / index.tsx / wherever you mount React
+import { installAnnotator } from "@loupe/dev-annotator"
+import "@loupe/dev-annotator/styles.css"
+
+if (import.meta.env.DEV) {
+  installAnnotator({ appName: "My App" })
+}
+```
+
+Run `pnpm dev` like always → Loupe button appears bottom-right of your app → press `⌘⇧X` to annotate.
+
+Your code, your `pnpm dev`, your existing flow — Loupe just shows up in dev mode and stays out of production builds.
+
+> Want annotations to persist to a JSON file via Electron IPC instead of `localStorage`? See [`packages/dev-annotator`](./packages/dev-annotator) for the three-file (main + preload + renderer) Electron setup.
+
+### Why not a standalone "attach to my running app" tool?
+
+Hard platform limit: to read DOM + React fiber (which is how Loupe locates code), the annotator must run inside the renderer process. Electron only exposes that via `--remote-debugging-port`, set at process start. So either Loupe lives inside your app (the SDK above), or it has to launch your app for you. There's no "Loupe.app attaches to whatever's running" path that also locates code — that's a constraint of Chromium's debug protocol, not a missing feature.
 
 ---
 
