@@ -47,6 +47,99 @@ Your code, your `pnpm dev`, your existing flow — Loupe just shows up in dev mo
 
 > Want annotations to persist to a JSON file via Electron IPC instead of `localStorage`? See [`packages/dev-annotator`](./packages/dev-annotator) for the three-file (main + preload + renderer) Electron setup.
 
+### Install with your AI assistant
+
+Hand any of these prompts to Claude Code / Cursor / Cline / Copilot Chat and let it wire Loupe in. Full prompt set lives in [`AGENTS.md`](./AGENTS.md).
+
+<details>
+<summary><strong>React / Vite app</strong> — single renderer entry (most common)</summary>
+
+```
+Integrate @loupe/dev-annotator into this project so I can press ⌘⇧X in dev mode to annotate UI.
+
+1. Install: `pnpm add -D @loupe/dev-annotator` (or npm/yarn).
+2. Find the React mount entry (main.tsx / index.tsx / entryPoint.tsx).
+3. Above createRoot, add:
+
+   if (import.meta.env.DEV) {
+     const { installAnnotator } = await import("@loupe/dev-annotator")
+     installAnnotator({ appName: "<my app name>" })
+   }
+
+   (Non-Vite: swap import.meta.env.DEV for process.env.NODE_ENV === "development".)
+
+Constraints:
+- Touch only the entry file. Don't refactor adjacent code.
+- No try/catch. Dev-only; tree-shakes out of production.
+- No new abstractions or config.
+
+Verify: pnpm dev → press ⌘⇧X → Loupe button appears bottom-right.
+```
+
+</details>
+
+<details>
+<summary><strong>Electron multi-window app</strong> (VS Code / Cursor / Cherry Studio style)</summary>
+
+```
+Integrate @loupe/dev-annotator into this Electron app for ALL renderer windows.
+
+1. Install: `pnpm add -D @loupe/dev-annotator`.
+2. Grep for every `createRoot(` call — Electron multi-window apps have one entry per BrowserWindow type (main, settings, quickAssistant, etc). List them all before editing.
+3. Create a shared helper, e.g. src/renderer/dev/installLoupe.ts:
+
+   import { installAnnotator } from "@loupe/dev-annotator"
+   export function installLoupe(windowName: string): void {
+     if (import.meta.env.DEV) {
+       installAnnotator({ appName: `<my app name> · ${windowName}` })
+     }
+   }
+
+4. In each entry, before createRoot, call `installLoupe("<window name>")` with a distinguishing name.
+5. Run typecheck to confirm imports resolve.
+
+Constraints:
+- Wire ALL entries — not just the main window.
+- Don't touch CSP, preload, or window manager. Loupe self-isolates via shadow DOM.
+- No try/catch, no feature flags, no production guards beyond import.meta.env.DEV.
+
+Verify: open each window, press ⌘⇧X in each, confirm Loupe overlays.
+```
+
+</details>
+
+<details>
+<summary><strong>Next.js App Router</strong> — needs a client component</summary>
+
+```
+Integrate @loupe/dev-annotator into this Next.js app. App Router layouts default to Server Components, so installAnnotator must run client-side.
+
+1. Install: `pnpm add -D @loupe/dev-annotator`.
+2. Create app/loupe-installer.tsx:
+
+   "use client"
+   import { useEffect } from "react"
+   export function LoupeInstaller() {
+     useEffect(() => {
+       if (process.env.NODE_ENV !== "development") return
+       import("@loupe/dev-annotator").then(({ installAnnotator }) => {
+         installAnnotator({ appName: "<my app name>" })
+       })
+     }, [])
+     return null
+   }
+
+3. Mount <LoupeInstaller /> once in app/layout.tsx inside <body>.
+
+Constraints:
+- Don't modify next.config.* — dynamic import handles bundle separation.
+- Don't add error handling. Production build won't include it.
+
+Verify: pnpm dev → any route → ⌘⇧X opens Loupe.
+```
+
+</details>
+
 ### Why not a standalone "attach to my running app" tool?
 
 Hard platform limit: to read DOM + React fiber (which is how Loupe locates code), the annotator must run inside the renderer process. Electron only exposes that via `--remote-debugging-port`, set at process start. So either Loupe lives inside your app (the SDK above), or it has to launch your app for you. There's no "Loupe.app attaches to whatever's running" path that also locates code — that's a constraint of Chromium's debug protocol, not a missing feature.
