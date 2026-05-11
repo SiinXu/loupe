@@ -1,8 +1,11 @@
 {
   "name": "@loupe/dev-annotator",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "In-app UI annotation tool for any Electron / web renderer. One-line install. Click any element, describe the issue, copy AI-ready prompt.",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -1,7 +1,8 @@
 {
   "name": "@loupe/core",
+  "private": true,
   "version": "0.1.0",
-  "description": "Shared annotation UI components used by Loupe extension and dev-annotator SDK.",
+  "description": "Shared annotation UI components used by Loupe extension and dev-annotator SDK. Internal monorepo package — bundled into @loupe/dev-annotator at build time; not published to npm.",
   "type": "module",
   "license": "Apache-2.0",
   "main": "./src/index.ts",
