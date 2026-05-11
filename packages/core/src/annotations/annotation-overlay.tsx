@@ -153,10 +153,13 @@ export function AnnotationOverlay() {
   // ─── Crosshair cursor on body ─────────────────────────────────────────
 
   useEffect(() => {
-    if (enabled) {
-      document.body.style.cursor = "crosshair"
-      return () => { document.body.style.cursor = "" }
-    }
+    if (!enabled) return
+    // Save and restore the host page's original cursor — overwriting with ""
+    // would clobber any inline cursor style the host had set (rare but real:
+    // some apps set a custom cursor during drag-and-drop or canvas editors).
+    const original = document.body.style.cursor
+    document.body.style.cursor = "crosshair"
+    return () => { document.body.style.cursor = original }
   }, [enabled])
 
   // ─── Protect annotation portal container from Radix Dialog `inert` ────
