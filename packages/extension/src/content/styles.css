@@ -100,8 +100,17 @@
   color: #121212;
 }
 
-/* List & dropdown surfaces — same treatment so menus aren't transparent. */
-:host [data-radix-popper-content-wrapper] [data-slot] {
+/* Dropdown / popover surface — give the floating card a hard, deterministic
+   boundary so it stays visible on white host pages where the var-driven
+   border / shadow would otherwise vanish. Scoped to the *content* element
+   (data-slot="dropdown-menu-content") only — items inside should inherit
+   the container's surface color, not get their own. */
+:host [data-radix-popper-content-wrapper] [data-slot="dropdown-menu-content"] {
   background-color: #ffffff;
   color: #121212;
+  border: 1px solid #d4d4d4;
+  border-radius: 12px;
+  box-shadow:
+    0 1px 3px rgb(0 0 0 / 0.06),
+    0 8px 24px rgb(0 0 0 / 0.10);
 }
