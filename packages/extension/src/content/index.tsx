@@ -29,15 +29,33 @@ function mount(): void {
   // will use position: fixed to render at full viewport.
   host.style.cssText =
     "all: initial; position: fixed; top: 0; left: 0; width: 0; height: 0; z-index: 2147483647;"
-  // Attach to <html> (documentElement), NOT <body>. Key reason: many sites
-  // apply `transform`, `will-change`, `filter`, or `contain` to body or some
-  // ancestor inside body — that breaks `position: fixed` for descendants
-  // (they end up positioned relative to that ancestor instead of viewport,
-  // potentially off-screen or clipped). Anchoring at <html> sidesteps this.
-  // The `aria-live="assertive"` attribute below makes a11y libraries that
-  // walk body.children skip us anyway, so the earlier "not contained inside
-  // body" warning no longer fires.
+  // Attach to <html> (documentElement), NOT <body>. Many sites apply
+  // `transform` / `will-change` / `filter` / `contain` to body or some
+  // ancestor inside body, which breaks `position: fixed` for descendants.
+  // Anchoring at <html> sidesteps this.
   document.documentElement.appendChild(host)
+
+  // ─── Property-level lock against external a11y libraries ───────────────
+  // Some sites (vibecafe.ai, certain Radix wrappers) bypass our
+  // `aria-live="assertive"` hint and forcibly set `inert` / `aria-hidden`
+  // on every body sibling — including our host. That can trigger render
+  // loops in their own a11y observers (we've seen recursive React stacks
+  // bottoming out on aria-hidden warnings). Lock the properties at the
+  // descriptor level so any setter call is silently no-op'd, and use a
+  // MutationObserver as a backup for setAttribute.
+  Object.defineProperty(host, "inert", {
+    get() { return false },
+    set() {},
+    configurable: true,
+  })
+  const stripExternalA11y = () => {
+    HTMLElement.prototype.removeAttribute.call(host, "inert")
+    HTMLElement.prototype.removeAttribute.call(host, "aria-hidden")
+  }
+  new MutationObserver(stripExternalA11y).observe(host, {
+    attributes: true,
+    attributeFilter: ["inert", "aria-hidden"],
+  })
 
   const shadow = host.attachShadow({ mode: "open" })
 
