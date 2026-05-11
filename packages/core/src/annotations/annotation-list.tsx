@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { CheckCircle2, Circle, Copy, Filter, Search, Trash2, X, AlertTriangle } from "lucide-react"
 import { Button } from "../ui/button"
@@ -88,10 +88,10 @@ export function AnnotationList({ open, onClose }: AnnotationListProps) {
       return next
     })
   }
-  const selectedAnnotations = useMemo(
-    () => filtered.filter((a) => selected.has(a.id)),
-    [filtered, selected],
-  )
+  // Plain const — `useMemo` here would be called conditionally (after the
+  // `if (!open) return null` early-return above), violating React rules of
+  // hooks and crashing the panel on toggle.
+  const selectedAnnotations = filtered.filter((a) => selected.has(a.id))
 
   const handleBatchResolve = () => {
     for (const ann of selectedAnnotations) {
