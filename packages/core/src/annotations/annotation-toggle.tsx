@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Sparkles,
   Palette,
+  Accessibility,
 } from "lucide-react"
 import { Button } from "../ui/button"
 import {
@@ -24,6 +25,8 @@ import { Badge } from "../ui/badge"
 import { useAnnotationContext } from "./annotation-provider"
 import { downloadJSON, copyJSON, parseImportJSON } from "./utils"
 import { extractDesignSpec, formatDesignSpecMarkdown } from "./extract-design-spec"
+import { runA11yAudit } from "./a11y-audit"
+import { generateSelector, generateElementLabel, generateBreadcrumb, captureComputedStyles } from "./utils"
 
 interface AnnotationToggleProps {
   onToggleList?: () => void
@@ -36,16 +39,19 @@ export function AnnotationToggle({ onToggleList, listOpen }: AnnotationTogglePro
     annotations,
     enabled,
     setEnabled,
+    addAnnotation,
     exportAnnotations,
     importAnnotations,
     removeAnnotation,
     portalContainer,
+    page,
     messages,
   } = useAnnotationContext()
 
   const [copied, setCopied] = useState(false)
   const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [extracted, setExtracted] = useState(false)
+  const [auditCount, setAuditCount] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -121,6 +127,49 @@ export function AnnotationToggle({ onToggleList, listOpen }: AnnotationTogglePro
     }
   }
 
+  const handleA11yAudit = async () => {
+    await new Promise((r) => setTimeout(r, 0))
+    const issues = runA11yAudit()
+
+    // Auto-create annotations from each issue. Skip ones already present
+    // (compare by selector + first 60 chars of comment) so re-running is idempotent.
+    const existingKeys = new Set(
+      allAnnotations.map((a) => `${a.selector}|${a.comment.slice(0, 60)}`),
+    )
+    let added = 0
+    for (const issue of issues) {
+      const key = `${issue.selector}|${issue.message.slice(0, 60)}`
+      if (existingKeys.has(key)) continue
+      const el = (() => {
+        try { return document.querySelector(issue.selector) as HTMLElement | null }
+        catch { return null }
+      })()
+      const rect = el?.getBoundingClientRect()
+      addAnnotation({
+        selector: issue.selector,
+        elementLabel: issue.elementLabel,
+        breadcrumb: el ? generateBreadcrumb(el) : issue.elementLabel,
+        comment: `[a11y/${issue.kind}] ${issue.message}`,
+        category: "bug",
+        page,
+        sourceHint: el ? generateElementLabel(el) : issue.elementLabel,
+        position: { x: 0.5, y: 0.5 },
+        rect: { width: rect ? Math.round(rect.width) : 0, height: rect ? Math.round(rect.height) : 0 },
+        computedStyles: el
+          ? captureComputedStyles(el)
+          : ({} as ReturnType<typeof captureComputedStyles>),
+        className: el?.getAttribute("class") || "",
+      })
+      added++
+    }
+
+    setAuditCount(added)
+    setTimeout(() => setAuditCount(null), 3000)
+  }
+
+  // Silence "imported but not used in body" if generateSelector tree-shakes elsewhere
+  void generateSelector
+
   const handleExtractSpec = async () => {
     // Run extraction asynchronously so the dropdown can close cleanly first
     await new Promise((r) => setTimeout(r, 0))
@@ -191,6 +240,12 @@ export function AnnotationToggle({ onToggleList, listOpen }: AnnotationTogglePro
             <DropdownMenuItem onClick={handleExtractSpec}>
               <Palette />
               {extracted ? messages.copied : messages.extractDesignSpec}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleA11yAudit}>
+              <Accessibility />
+              {auditCount !== null
+                ? messages.a11yAuditDone(auditCount)
+                : messages.a11yAudit}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             {onToggleList && (

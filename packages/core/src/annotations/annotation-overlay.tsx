@@ -79,6 +79,14 @@ export function AnnotationOverlay() {
     setTimeout(() => setToast(null), 2000)
   }, [])
 
+  // ─── Measurement mode (Shift held in annotation mode) ──────────────────
+  // First Shift+hover anchors element A; subsequent hovers compute distance
+  // and alignment between A and the currently hovered element B and draw
+  // dashed guides + a px label.
+  const [shiftHeld, setShiftHeld] = useState(false)
+  const [measureAnchor, setMeasureAnchor] = useState<DOMRect | null>(null)
+  const [measureCurrent, setMeasureCurrent] = useState<DOMRect | null>(null)
+
   const getBoundary = useCallback((): HTMLElement | null => {
     return document.querySelector(boundarySelector)
   }, [boundarySelector])
@@ -308,9 +316,39 @@ export function AnnotationOverlay() {
 
       const el = ancestorPathRef.current[depthIndexRef.current] || target
       applyHighlight(el)
+
+      // Measurement mode: when Shift is held, lock anchor on first hover (or
+      // refresh if user moves to a different element after releasing Shift),
+      // and update `current` to whatever they're hovering now.
+      if (shiftHeld) {
+        const rect = el.getBoundingClientRect()
+        setMeasureCurrent(rect)
+        if (!measureAnchor) setMeasureAnchor(rect)
+      }
     },
-    [enabled, pending, activeBubbleId, buildAncestorPath, applyHighlight],
+    [enabled, pending, activeBubbleId, buildAncestorPath, applyHighlight, shiftHeld, measureAnchor],
   )
+
+  // Listen for Shift to enter / exit measurement mode
+  useEffect(() => {
+    if (!enabled) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Shift") setShiftHeld(true)
+    }
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "Shift") {
+        setShiftHeld(false)
+        setMeasureAnchor(null)
+        setMeasureCurrent(null)
+      }
+    }
+    window.addEventListener("keydown", onKeyDown)
+    window.addEventListener("keyup", onKeyUp)
+    return () => {
+      window.removeEventListener("keydown", onKeyDown)
+      window.removeEventListener("keyup", onKeyUp)
+    }
+  }, [enabled])
 
   // ─── Scroll wheel to navigate parent/child elements ───────────────────
 
@@ -488,6 +526,61 @@ export function AnnotationOverlay() {
           )}
         </div>
       )}
+
+      {/* Measurement guides + distance label (Shift held during annotation) */}
+      {enabled && shiftHeld && measureAnchor && measureCurrent && (() => {
+        const a = measureAnchor
+        const b = measureCurrent
+        // Pick the closest pair of edges to display the gap between
+        let dx = 0
+        let dy = 0
+        let labelX = 0
+        let labelY = 0
+        if (b.left >= a.right) {
+          dx = b.left - a.right
+          labelX = (a.right + b.left) / 2
+          labelY = (Math.max(a.top, b.top) + Math.min(a.bottom, b.bottom)) / 2
+        } else if (a.left >= b.right) {
+          dx = a.left - b.right
+          labelX = (b.right + a.left) / 2
+          labelY = (Math.max(a.top, b.top) + Math.min(a.bottom, b.bottom)) / 2
+        }
+        if (b.top >= a.bottom) {
+          dy = b.top - a.bottom
+          labelX ||= (Math.max(a.left, b.left) + Math.min(a.right, b.right)) / 2
+          labelY = (a.bottom + b.top) / 2
+        } else if (a.top >= b.bottom) {
+          dy = a.top - b.bottom
+          labelX ||= (Math.max(a.left, b.left) + Math.min(a.right, b.right)) / 2
+          labelY = (b.bottom + a.top) / 2
+        }
+        const totalGap = Math.round(Math.sqrt(dx * dx + dy * dy))
+        const widthDelta = Math.round(b.width - a.width)
+        const heightDelta = Math.round(b.height - a.height)
+        return (
+          <>
+            {/* Anchor box outline (dashed blue) */}
+            <div
+              data-annotation-ui
+              className="fixed pointer-events-none border-2 border-dashed border-accent-blue/70"
+              style={{ zIndex: 9997, top: a.top, left: a.left, width: a.width, height: a.height }}
+            />
+            {/* Distance label */}
+            <div
+              data-annotation-ui
+              className="fixed pointer-events-none px-1.5 py-0.5 rounded-[var(--radius-dot)] bg-accent-blue text-white text-[length:var(--fs-xs)] font-mono font-semibold shadow-md"
+              style={{ zIndex: 9999, top: labelY - 10, left: labelX, transform: "translate(-50%, -50%)" }}
+            >
+              {totalGap > 0 ? `${totalGap}px` : "overlap"}
+              {(widthDelta !== 0 || heightDelta !== 0) && (
+                <span className="ml-1 opacity-70">
+                  · Δw {widthDelta > 0 ? "+" : ""}{widthDelta} · Δh {heightDelta > 0 ? "+" : ""}{heightDelta}
+                </span>
+              )}
+            </div>
+          </>
+        )
+      })()}
 
       {/* Annotation markers — sequential numbering among visible only */}
       {(() => {

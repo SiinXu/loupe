@@ -14,3 +14,4 @@ export type {
 export { DEFAULT_ANNOTATION_MESSAGES } from "./types"
 export { generateSingleAnnotationPrompt, computeStyleDiff, parseImportJSON } from "./utils"
 export { extractDesignSpec, formatDesignSpecMarkdown, type DesignSpec, type SpecValue } from "./extract-design-spec"
+export { runA11yAudit, type A11yIssue, type A11yIssueKind } from "./a11y-audit"

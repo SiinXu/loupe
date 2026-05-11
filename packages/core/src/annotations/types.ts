@@ -98,6 +98,14 @@ export interface AnnotationMessages {
   // List
   listTitle: string                       // "Annotations"
   filterTooltip: string
+  searchPlaceholder: string               // "Search annotations…"
+  selectForBatch: string                  // a11y label on row checkbox
+  selectedCount: (n: number) => string    // "{n} selected"
+  batchResolve: string
+  batchDelete: string
+  batchCopyPrompts: string
+  /** Confirm before bulk-deleting */
+  confirmBatchDelete: (n: number) => string
   /** "No annotations on this page yet." */
   listEmpty: string
   /** Sub-line shown on the empty list */
@@ -116,6 +124,10 @@ export interface AnnotationMessages {
   importJson: string
   /** "Extract Design Spec" — scan the page and dump tokens */
   extractDesignSpec: string
+  /** "Run A11y Audit" — scan the page for accessibility issues */
+  a11yAudit: string
+  /** Toast/menu label after audit completes — e.g. "Found 5 issues" */
+  a11yAuditDone: (n: number) => string
   showList: string
   hideList: string
   clearResolved: string
@@ -157,6 +169,13 @@ export const DEFAULT_ANNOTATION_MESSAGES: AnnotationMessages = {
 
   listTitle: "Annotations",
   filterTooltip: "Filter",
+  searchPlaceholder: "Search annotations…",
+  selectForBatch: "Select for batch action",
+  selectedCount: (n) => `${n} selected`,
+  batchResolve: "Resolve all selected",
+  batchDelete: "Delete all selected",
+  batchCopyPrompts: "Copy AI prompts for selected",
+  confirmBatchDelete: (n) => `Delete ${n} annotation${n === 1 ? "" : "s"}? This cannot be undone.`,
   listEmpty: "No annotations on this page yet.",
   listEmptyHint: "Enable annotation mode (⌘⇧X) and click on elements to add comments.",
   listEmptyFiltered: (category) => `No ${category} annotations on this page.`,
@@ -169,6 +188,8 @@ export const DEFAULT_ANNOTATION_MESSAGES: AnnotationMessages = {
   copyAiPrompt: "Copy AI Prompt",
   importJson: "Import JSON",
   extractDesignSpec: "Extract Design Spec",
+  a11yAudit: "Run A11y Audit",
+  a11yAuditDone: (n) => (n === 0 ? "No new issues" : `Found ${n} issue${n === 1 ? "" : "s"}`),
   showList: "Show List",
   hideList: "Hide List",
   clearResolved: "Clear Resolved",

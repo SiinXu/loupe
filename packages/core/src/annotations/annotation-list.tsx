@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
-import { CheckCircle2, Circle, Filter, Trash2, X, AlertTriangle } from "lucide-react"
+import { CheckCircle2, Circle, Copy, Filter, Search, Trash2, X, AlertTriangle } from "lucide-react"
 import { Button } from "../ui/button"
 import { Badge } from "../ui/badge"
 import { useAnnotationContext } from "./annotation-provider"
+import { copyJSON, generateSingleAnnotationPrompt } from "./utils"
 import type { AnnotationCategory, AnnotationMessages } from "./types"
 
 const FILTER_VALUES: (AnnotationCategory | "all")[] = [
@@ -40,6 +41,10 @@ export function AnnotationList({ open, onClose }: AnnotationListProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [filterCategory, setFilterCategory] = useState<AnnotationCategory | "all">("all")
   const [showFilters, setShowFilters] = useState(false)
+  const [search, setSearch] = useState("")
+  /** Selection set for batch ops; reset whenever the list closes */
+  const [selected, setSelected] = useState<Set<string>>(() => new Set())
+  useEffect(() => { if (!open) setSelected(new Set()) }, [open])
 
   // Protect from Radix Dialog's inert/aria-hidden
   useEffect(() => {
@@ -56,13 +61,53 @@ export function AnnotationList({ open, onClose }: AnnotationListProps) {
 
   if (!open) return null
 
-  const filtered = filterCategory === "all"
+  const byCategory = filterCategory === "all"
     ? annotations
     : annotations.filter((a) => a.category === filterCategory)
+  const q = search.trim().toLowerCase()
+  const filtered = q
+    ? byCategory.filter((a) =>
+        a.comment.toLowerCase().includes(q) ||
+        a.elementLabel.toLowerCase().includes(q) ||
+        a.breadcrumb.toLowerCase().includes(q) ||
+        (a.className || "").toLowerCase().includes(q) ||
+        (a.sourceHint || "").toLowerCase().includes(q),
+      )
+    : byCategory
+
   // Show ALL annotations (including orphaned) — the orphaned badge on each
   // item makes the state visible without losing entries from the list.
   const active = filtered.filter((a) => !a.resolved)
   const resolved = filtered.filter((a) => a.resolved)
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  const selectedAnnotations = useMemo(
+    () => filtered.filter((a) => selected.has(a.id)),
+    [filtered, selected],
+  )
+
+  const handleBatchResolve = () => {
+    for (const ann of selectedAnnotations) {
+      if (!ann.resolved) resolveAnnotation(ann.id)
+    }
+    setSelected(new Set())
+  }
+  const handleBatchDelete = () => {
+    if (!confirm(messages.confirmBatchDelete(selected.size))) return
+    for (const ann of selectedAnnotations) removeAnnotation(ann.id)
+    setSelected(new Set())
+  }
+  const handleBatchCopyPrompt = async () => {
+    const text = selectedAnnotations.map(generateSingleAnnotationPrompt).join("\n\n---\n\n")
+    await copyJSON(text)
+  }
 
   const scrollToElement = (selector: string) => {
     try {
@@ -111,6 +156,46 @@ export function AnnotationList({ open, onClose }: AnnotationListProps) {
         </div>
       </div>
 
+      {/* Search */}
+      <div className="px-3 py-2 border-b border-border/50 flex items-center gap-2">
+        <Search className="size-3.5 text-muted-foreground shrink-0" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={messages.searchPlaceholder}
+          className="flex-1 bg-transparent text-[length:var(--fs-sm)] outline-none placeholder:text-muted-foreground"
+        />
+        {search && (
+          <Button variant="ghost" size="icon-xs" onClick={() => setSearch("")}>
+            <X className="size-3" />
+          </Button>
+        )}
+      </div>
+
+      {/* Batch actions bar — appears only when at least one annotation is selected */}
+      {selected.size > 0 && (
+        <div className="px-3 py-2 border-b border-border/50 bg-primary/5 flex items-center justify-between gap-2">
+          <span className="text-[length:var(--fs-xs)] font-medium">
+            {messages.selectedCount(selected.size)}
+          </span>
+          <div className="flex gap-1">
+            <Button variant="outline" size="xs" onClick={handleBatchCopyPrompt} title={messages.batchCopyPrompts}>
+              <Copy className="size-3" />
+            </Button>
+            <Button variant="outline" size="xs" onClick={handleBatchResolve} title={messages.batchResolve}>
+              <CheckCircle2 className="size-3" />
+            </Button>
+            <Button variant="outline" size="xs" onClick={handleBatchDelete} title={messages.batchDelete} className="text-destructive">
+              <Trash2 className="size-3" />
+            </Button>
+            <Button variant="ghost" size="xs" onClick={() => setSelected(new Set())}>
+              <X className="size-3" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Filter bar */}
       {showFilters && (
         <div className="flex flex-wrap gap-1 px-3 py-2 border-b border-border/50 bg-muted/30">
@@ -154,9 +239,19 @@ export function AnnotationList({ open, onClose }: AnnotationListProps) {
             {active.map((ann, i) => (
               <div
                 key={ann.id}
-                className="flex items-start gap-2 px-3 py-2 border-b border-border/50 hover:bg-muted/50 cursor-pointer group"
+                className={`flex items-start gap-2 px-3 py-2 border-b border-border/50 hover:bg-muted/50 cursor-pointer group ${
+                  selected.has(ann.id) ? "bg-primary/5" : ""
+                }`}
                 onClick={() => scrollToElement(ann.selector)}
               >
+                <input
+                  type="checkbox"
+                  checked={selected.has(ann.id)}
+                  onChange={() => toggleSelect(ann.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="mt-1 size-3.5 cursor-pointer accent-primary"
+                  aria-label={messages.selectForBatch}
+                />
                 <div className="flex-shrink-0 mt-0.5">
                   <Badge className="min-w-5 h-5 rounded-full px-1 text-[length:var(--fs-xs)] font-bold justify-center bg-primary text-primary-foreground border-transparent">
                     {i + 1}
@@ -216,9 +311,19 @@ export function AnnotationList({ open, onClose }: AnnotationListProps) {
                 {resolved.map((ann) => (
                   <div
                     key={ann.id}
-                    className="flex items-start gap-2 px-3 py-2 border-b border-border/50 hover:bg-muted/50 cursor-pointer group opacity-60"
+                    className={`flex items-start gap-2 px-3 py-2 border-b border-border/50 hover:bg-muted/50 cursor-pointer group opacity-60 ${
+                      selected.has(ann.id) ? "bg-primary/5 opacity-100" : ""
+                    }`}
                     onClick={() => scrollToElement(ann.selector)}
                   >
+                    <input
+                      type="checkbox"
+                      checked={selected.has(ann.id)}
+                      onChange={() => toggleSelect(ann.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="mt-1 size-3.5 cursor-pointer accent-primary"
+                      aria-label={messages.selectForBatch}
+                    />
                     <CheckCircle2 className="size-4 text-success mt-0.5 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-[length:var(--fs-sm)] line-through line-clamp-2">{ann.comment}</p>
