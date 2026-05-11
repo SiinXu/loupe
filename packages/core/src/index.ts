@@ -19,9 +19,11 @@ export type {
   Annotation,
   AnnotationCategory,
   AnnotationContextValue,
+  AnnotationMessages,
   BubbleAction,
   CapturedStyles,
 } from "./annotations/types"
+export { DEFAULT_ANNOTATION_MESSAGES } from "./annotations/types"
 export {
   generateSingleAnnotationPrompt,
   computeStyleDiff,
