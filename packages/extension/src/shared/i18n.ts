@@ -57,6 +57,8 @@ const en: Dict = {
   "card.copyPrompts": "Copy AI Prompt",
   "card.copied": "Copied",
   "card.confirmClear": "Clear all annotations for {origin}?",
+  "card.confirmClearShort": "Confirm?",
+  "card.delete": "Clear annotations on this site",
 
   // Guide panel
   "guide.howItWorks": "How it works",
@@ -195,6 +197,8 @@ const zhCN: Dict = {
   "card.copyPrompts": "复制 AI Prompt",
   "card.copied": "已复制",
   "card.confirmClear": "清除 {origin} 上的全部标注？",
+  "card.confirmClearShort": "确认?",
+  "card.delete": "清除该站标注",
 
   "guide.howItWorks": "使用流程",
   "guide.shortcuts": "快捷键",
@@ -325,6 +329,8 @@ const ja: Dict = {
   "card.copyPrompts": "AI プロンプトをコピー",
   "card.copied": "コピー済み",
   "card.confirmClear": "{origin} の全注釈を削除しますか？",
+  "card.confirmClearShort": "確認?",
+  "card.delete": "このサイトの注釈を削除",
 
   "guide.howItWorks": "使い方",
   "guide.shortcuts": "ショートカット",

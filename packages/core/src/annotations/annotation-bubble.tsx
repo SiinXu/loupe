@@ -65,7 +65,7 @@ const PRESETS: Record<AnnotationCategory, { label: string; prompt: string }[]> =
   ],
   other: [
     { label: "需要讨论", prompt: "这里需要讨论：{?}" },
-    { label: "组件替换", prompt: "需要替换为设计系统中的 {?} 组件" },
+    { label: "组件替换", prompt: "需要替换为 @cherry-studio/ui 包的 {?} 组件" },
     { label: "代码重构", prompt: "代码需要重构：{?}" },
     { label: "自定义", prompt: "" },
   ],
@@ -106,6 +106,38 @@ export function AnnotationBubble({
   const [showPresets, setShowPresets] = useState(isCreate)
   const [copiedPrompt, setCopiedPrompt] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // ─── Drag-to-reposition ──────────────────────────────────────────────
+  // Header acts as the drag handle. Once the user has dragged, posStyle
+  // (the parent-controlled position) is ignored in favor of dragOffset
+  // until the bubble is unmounted.
+  const [dragOffset, setDragOffset] = useState<{ top: number; left: number } | null>(null)
+  const dragRef = useRef<{ startX: number; startY: number; baseTop: number; baseLeft: number } | null>(null)
+  const handleHeaderPointerDown = (e: React.PointerEvent) => {
+    // Don't drag when clicking the close button (or any nested button)
+    if ((e.target as HTMLElement).closest("button")) return
+    const el = e.currentTarget.closest("[data-bubble-root]") as HTMLElement | null
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      baseTop: rect.top,
+      baseLeft: rect.left,
+    }
+    el.setPointerCapture?.(e.pointerId)
+    e.preventDefault()
+  }
+  const handleHeaderPointerMove = (e: React.PointerEvent) => {
+    if (!dragRef.current) return
+    const { startX, startY, baseTop, baseLeft } = dragRef.current
+    const nextLeft = Math.max(0, Math.min(window.innerWidth - 320, baseLeft + (e.clientX - startX)))
+    const nextTop = Math.max(0, Math.min(window.innerHeight - 80, baseTop + (e.clientY - startY)))
+    setDragOffset({ top: nextTop, left: nextLeft })
+  }
+  const handleHeaderPointerUp = () => {
+    dragRef.current = null
+  }
 
   // Style diff: compare saved vs current computed styles
   const styleDiff = useMemo(() => {
@@ -221,14 +253,21 @@ export function AnnotationBubble({
   return (
     <div
       data-annotation-ui
+      data-bubble-root
       className="fixed w-80 rounded-[var(--radius-card)] border border-border bg-popover text-popover-foreground shadow-popover animate-in fade-in-0 zoom-in-95 pointer-events-auto"
-      style={{ ...posStyle, zIndex: 99999 }}
+      style={{ ...posStyle, ...(dragOffset || {}), zIndex: 99999 }}
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+      {/* Header — also serves as drag handle */}
+      <div
+        className="flex items-center justify-between px-3 py-2 border-b border-border cursor-grab active:cursor-grabbing select-none"
+        onPointerDown={handleHeaderPointerDown}
+        onPointerMove={handleHeaderPointerMove}
+        onPointerUp={handleHeaderPointerUp}
+        onPointerCancel={handleHeaderPointerUp}
+      >
         <Badge variant="outline" className="text-[length:var(--fs-xs)] px-1.5 py-0">
           {isCreate
             ? messages.addAnnotation

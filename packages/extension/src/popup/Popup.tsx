@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   Button,
   Badge,
@@ -177,12 +177,27 @@ function OriginCard({ group }: { group: OriginGroup }) {
     setTimeout(() => setCopied(false), 1800)
   }
 
+  // Two-step delete inside the popup. Calling `confirm()` here would steal
+  // focus, close the popup, and the await/reload would run in a destroyed
+  // context — silently dropping the delete. Inline confirm avoids that.
+  const [confirming, setConfirming] = useState(false)
+  const confirmTimerRef = useRef<number | null>(null)
   const handleClear = async () => {
-    if (!confirm(t("card.confirmClear", { origin: prettyOrigin(origin) }))) return
+    if (!confirming) {
+      setConfirming(true)
+      if (confirmTimerRef.current) window.clearTimeout(confirmTimerRef.current)
+      confirmTimerRef.current = window.setTimeout(() => setConfirming(false), 3000)
+      return
+    }
+    if (confirmTimerRef.current) window.clearTimeout(confirmTimerRef.current)
+    setConfirming(false)
     const { saveAnnotationsFor } = await import("../shared/storage")
     await saveAnnotationsFor(origin, [])
-    location.reload()
+    // Storage change event will refresh the popup automatically — no reload needed
   }
+  useEffect(() => () => {
+    if (confirmTimerRef.current) window.clearTimeout(confirmTimerRef.current)
+  }, [])
 
   return (
     <div className="rounded-[var(--radius-card)] border border-border bg-card p-3 space-y-2">
@@ -219,8 +234,15 @@ function OriginCard({ group }: { group: OriginGroup }) {
           {copied ? <CheckCircle2 className="size-3 text-success" /> : <Copy className="size-3" />}
           {copied ? t("card.copied") : t("card.copyPrompts")}
         </Button>
-        <Button variant="outline" size="xs" onClick={handleClear} className="text-destructive hover:text-destructive">
+        <Button
+          variant={confirming ? "destructive" : "outline"}
+          size="xs"
+          onClick={handleClear}
+          className={confirming ? "" : "text-destructive hover:text-destructive"}
+          title={confirming ? t("card.confirmClearShort") : t("card.delete")}
+        >
           <Trash2 className="size-3" />
+          {confirming && <span className="text-[length:var(--fs-xs)] ml-1">{t("card.confirmClearShort")}</span>}
         </Button>
       </div>
     </div>
