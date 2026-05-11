@@ -131,15 +131,24 @@ export function AnnotationToggle({ onToggleList, listOpen }: AnnotationTogglePro
     await new Promise((r) => setTimeout(r, 0))
     const issues = runA11yAudit()
 
-    // Auto-create annotations from each issue. Skip ones already present
-    // (compare by selector + first 60 chars of comment) so re-running is idempotent.
+    // Idempotency: dedupe by `kind + selector` so the same a11y problem on
+    // the same element only ever gets one annotation, even if the contrast
+    // ratio in the message text drifts (e.g. text changes 2.84 → 2.86 after
+    // re-render) or the selector's nth-of-type shifts slightly.
+    const a11yKeyOf = (selector: string, comment: string) => {
+      const m = comment.match(/^\[a11y\/([^\]]+)\]/)
+      return m ? `${m[1]}|${selector}` : null
+    }
     const existingKeys = new Set(
-      allAnnotations.map((a) => `${a.selector}|${a.comment.slice(0, 60)}`),
+      allAnnotations
+        .map((a) => a11yKeyOf(a.selector, a.comment))
+        .filter((k): k is string => k !== null),
     )
     let added = 0
     for (const issue of issues) {
-      const key = `${issue.selector}|${issue.message.slice(0, 60)}`
+      const key = `${issue.kind}|${issue.selector}`
       if (existingKeys.has(key)) continue
+      existingKeys.add(key)
       const el = (() => {
         try { return document.querySelector(issue.selector) as HTMLElement | null }
         catch { return null }
