@@ -131,24 +131,37 @@ export function AnnotationToggle({ onToggleList, listOpen }: AnnotationTogglePro
     await new Promise((r) => setTimeout(r, 0))
     const issues = runA11yAudit()
 
-    // Idempotency: dedupe by `kind + selector` so the same a11y problem on
-    // the same element only ever gets one annotation, even if the contrast
-    // ratio in the message text drifts (e.g. text changes 2.84 → 2.86 after
-    // re-render) or the selector's nth-of-type shifts slightly.
-    const a11yKeyOf = (selector: string, comment: string) => {
-      const m = comment.match(/^\[a11y\/([^\]]+)\]/)
-      return m ? `${m[1]}|${selector}` : null
+    // Snapshot semantics: each audit run replaces all UNRESOLVED a11y
+    // annotations with the current findings. Stable dedup keys based on
+    // `selector` are unreliable because `shortSelector()` uses :nth-of-type,
+    // which drifts whenever sibling order changes — even a render that
+    // re-orders children within a list bumps the index. Just clearing &
+    // re-adding gives the user a clean live snapshot every run.
+    //
+    // Resolved a11y annotations are preserved — user explicitly marked them
+    // (whether truly fixed or "won't fix"), so we don't want to keep
+    // re-creating them.
+    const isA11y = (comment: string) => /^\[a11y\//.test(comment)
+    for (const ann of allAnnotations) {
+      if (isA11y(ann.comment) && !ann.resolved) removeAnnotation(ann.id)
     }
-    const existingKeys = new Set(
+    // Resolved a11y annotations stay in storage; if they describe an issue
+    // that's still present, skip re-adding it so user's "resolved" state isn't
+    // overridden by a fresh duplicate. Match by `kind + elementLabel` (more
+    // stable than selector across DOM re-renders).
+    const resolvedA11yKeys = new Set(
       allAnnotations
-        .map((a) => a11yKeyOf(a.selector, a.comment))
+        .filter((a) => a.resolved && isA11y(a.comment))
+        .map((a) => {
+          const kind = a.comment.match(/^\[a11y\/([^\]]+)\]/)?.[1]
+          return kind ? `${kind}|${a.elementLabel}` : null
+        })
         .filter((k): k is string => k !== null),
     )
+
     let added = 0
     for (const issue of issues) {
-      const key = `${issue.kind}|${issue.selector}`
-      if (existingKeys.has(key)) continue
-      existingKeys.add(key)
+      if (resolvedA11yKeys.has(`${issue.kind}|${issue.elementLabel}`)) continue
       const el = (() => {
         try { return document.querySelector(issue.selector) as HTMLElement | null }
         catch { return null }
