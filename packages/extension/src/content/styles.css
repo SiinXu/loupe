@@ -93,33 +93,21 @@
   border-color: #d0d0d0;
 }
 
-/* Bubble + List card surface — deterministic color, hard border, real shadow.
-   `bg-popover` (`hsl(var(--popover))` ≈ #fcfcfc) and `border-border`
-   (`hsl(var(--border))` ≈ #ececec) become invisible on white host pages.
-   Force a literal #d4d4d4 border + multi-layer shadow so the card always
-   reads as a floating surface regardless of host background. */
-:host [data-annotation-ui][class*="bg-popover"] {
-  background-color: #ffffff;
-  color: #121212;
-  border: 1px solid #d4d4d4;
-  border-radius: 12px;
-  box-shadow:
-    0 1px 3px rgb(0 0 0 / 0.06),
-    0 8px 24px rgb(0 0 0 / 0.10);
-}
-
-/* Dropdown / popover surface — give the floating card a hard, deterministic
-   boundary so it stays visible on white host pages where the var-driven
-   border / shadow would otherwise vanish. Scoped to the *content* element
-   (data-slot="dropdown-menu-content") only — items inside should inherit
-   the container's surface color, not get their own. */
+/* All Loupe floating cards — Bubble (create / view), List, and Dropdown.
+   Force a deterministic visible boundary on white host pages where the
+   var-driven `--popover` (~#fcfcfc) and `--border` (~#ececec) blend in.
+   `!important` because Tailwind's `border-border` / `shadow-popover`
+   utilities re-apply via the same selector specificity through the
+   build pipeline; `!important` guarantees the override always wins. */
+:host [data-annotation-ui][class*="bg-popover"],
 :host [data-radix-popper-content-wrapper] [data-slot="dropdown-menu-content"] {
-  background-color: #ffffff;
-  color: #121212;
-  border: 1px solid #d4d4d4;
-  border-radius: 12px;
+  background-color: #ffffff !important;
+  color: #121212 !important;
+  border: 1px solid #c4c4c4 !important;
+  border-radius: 12px !important;
   box-shadow:
-    0 1px 3px rgb(0 0 0 / 0.06),
-    0 8px 24px rgb(0 0 0 / 0.10);
+    0 1px 2px rgb(0 0 0 / 0.08),
+    0 6px 16px rgb(0 0 0 / 0.10),
+    0 16px 40px rgb(0 0 0 / 0.08) !important;
 }
 
