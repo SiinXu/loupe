@@ -312,10 +312,19 @@ function generateActionPrompt(annotations: Annotation[], app: string): string {
     byPage.set(ann.page, list)
   }
 
+  const hasScreenshots = unresolved.some((a) => a.screenshot)
+
   const lines: string[] = [
-    `Please fix the following ${unresolved.length} UI issues in the ${app} app:`,
+    `You are fixing ${unresolved.length} UI bug${unresolved.length === 1 ? "" : "s"} in the ${app} app. The user pinpointed each element below using Loupe (a DOM annotation tool). Apply surgical fixes — one per issue, touching only what's needed.`,
     "",
   ]
+
+  if (hasScreenshots) {
+    lines.push(
+      `Screenshots of the offending elements are attached to this message. Use them to ground your understanding of the visual state.`,
+      "",
+    )
+  }
 
   for (const [page, anns] of byPage) {
     lines.push(`## Page: ${page}`)
@@ -324,7 +333,7 @@ function generateActionPrompt(annotations: Annotation[], app: string): string {
     for (let i = 0; i < anns.length; i++) {
       const ann = anns[i]
       lines.push(`### ${i + 1}. [${ann.category}] ${ann.comment}`)
-      lines.push(`- **File**: \`${ann.sourceHint}\``)
+      lines.push(`- **File hint**: \`${ann.sourceHint}\``)
       lines.push(`- **Element**: \`${ann.elementLabel}\``)
       lines.push(`- **Breadcrumb**: ${ann.breadcrumb}`)
       if (ann.className) {
@@ -348,7 +357,20 @@ function generateActionPrompt(annotations: Annotation[], app: string): string {
   }
 
   lines.push("---")
-  lines.push("For each issue, locate the component by searching for the className, read the source file, and apply the fix. Verify visually after each change.")
+  lines.push("Workflow (per issue):")
+  lines.push("1. Locate: grep the className (or breadcrumb tail) to find the source file.")
+  lines.push("2. Read: confirm the element identity matches the breadcrumb before editing.")
+  lines.push("3. Diagnose: hypothesise why the current styles produce the reported issue.")
+  lines.push("4. Fix: apply the minimum change.")
+  lines.push("5. Verify: ask the user to refresh the dev app and re-inspect the same element.")
+  lines.push("")
+  lines.push("Batching: group fixes by file when possible. Read each file once, apply all relevant fixes from this list, then move to the next file — this minimises context churn.")
+  lines.push("")
+  lines.push("Constraints:")
+  lines.push("- Touch ONLY the components identified above.")
+  lines.push("- Do NOT refactor adjacent code, rename variables, or reorder imports.")
+  lines.push("- Do NOT add abstractions, helpers, or \"improvements\" unrelated to the listed bugs.")
+  lines.push("- If a fix would touch a shared component used elsewhere, stop and ask first.")
 
   return lines.join("\n")
 }
@@ -418,13 +440,15 @@ export async function copyJSON(content: string): Promise<boolean> {
 
 // ─── Single Annotation Prompt ──────────────────────────────────────────────
 
-export function generateSingleAnnotationPrompt(ann: Annotation): string {
+export function generateSingleAnnotationPrompt(ann: Annotation, app?: string): string {
+  const appLabel = app ? `the ${app} app` : "the app"
+  const searchKey = ann.className || ann.elementLabel
   const lines: string[] = [
-    `Please fix this UI issue:`,
+    `You are fixing a UI bug in ${appLabel}. The user pinpointed the exact element below using Loupe (a DOM annotation tool). Apply a surgical fix — touch only what's needed to resolve this specific issue.`,
     ``,
     `## [${ann.category}] ${ann.comment}`,
     `- **Page**: ${ann.page}`,
-    `- **File**: \`${ann.sourceHint}\``,
+    `- **File hint**: \`${ann.sourceHint}\``,
     `- **Element**: \`${ann.elementLabel}\``,
     `- **Breadcrumb**: ${ann.breadcrumb}`,
   ]
@@ -442,7 +466,26 @@ export function generateSingleAnnotationPrompt(ann: Annotation): string {
     }
   }
 
-  lines.push(``, `Locate the component by searching for the className, read the source file, and apply the fix.`)
+  if (ann.screenshot) {
+    lines.push(
+      ``,
+      `A screenshot of the offending element is attached to this message. Use it to ground your understanding of the visual state.`,
+    )
+  }
+
+  lines.push(``, `Workflow:`)
+  lines.push(`1. Locate: grep for \`${searchKey}\` (or the breadcrumb tail) to find the source file.`)
+  lines.push(`2. Read: open the file and inspect the surrounding context — confirm the element matches \`${ann.elementLabel}\` and the breadcrumb above.`)
+  lines.push(`3. Diagnose: form a hypothesis about why the current styles produce the reported issue.`)
+  lines.push(`4. Fix: apply the minimum change.`)
+  lines.push(`5. Verify: ask the user to refresh the dev app and re-inspect the same element (or re-run the same Loupe annotation to diff styles).`)
+
+  lines.push(``, `Constraints:`)
+  lines.push(`- Touch ONLY the component identified by the breadcrumb / className above.`)
+  lines.push(`- Do NOT refactor adjacent code, rename variables, or reorder imports.`)
+  lines.push(`- Do NOT add abstractions, helpers, or "improvements" unrelated to this bug.`)
+  lines.push(`- If the fix would touch a shared component used elsewhere, stop and ask first.`)
+
   return lines.join("\n")
 }
 

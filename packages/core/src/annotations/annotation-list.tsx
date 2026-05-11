@@ -105,7 +105,7 @@ export function AnnotationList({ open, onClose }: AnnotationListProps) {
     setSelected(new Set())
   }
   const handleBatchCopyPrompt = async () => {
-    const text = selectedAnnotations.map(generateSingleAnnotationPrompt).join("\n\n---\n\n")
+    const text = selectedAnnotations.map((a) => generateSingleAnnotationPrompt(a)).join("\n\n---\n\n")
     await copyJSON(text)
   }
 

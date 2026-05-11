@@ -170,7 +170,7 @@ function OriginCard({ group }: { group: OriginGroup }) {
   const handleCopyAllPrompts = async () => {
     const prompts = annotations
       .filter((a) => !a.resolved)
-      .map(generateSingleAnnotationPrompt)
+      .map((a) => generateSingleAnnotationPrompt(a))
       .join("\n\n---\n\n")
     await navigator.clipboard.writeText(prompts)
     setCopied(true)
