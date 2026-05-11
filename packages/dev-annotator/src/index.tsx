@@ -1,6 +1,7 @@
 import { createRoot, type Root } from "react-dom/client"
 import { AnnotatorApp } from "./App"
 import { createLocalStorageAdapter, type StorageAdapter } from "./storage"
+import bundledStyles from "./styles.generated"
 import type { BubbleAction } from "@loupe/core"
 
 export interface InstallAnnotatorOptions {
@@ -21,7 +22,11 @@ export interface InstallAnnotatorOptions {
   bubbleActions?: BubbleAction[]
   /** Override sourceHint generation. */
   getSourceHint?: (el: HTMLElement) => string
-  /** CSS string injected into the shadow root (default: bundled `styles.css`). */
+  /**
+   * CSS string injected into the shadow root. Defaults to the package's
+   * bundled `styles.css` (automatically inlined at build time — no separate
+   * import needed). Override only when you've customised the build.
+   */
   cssText?: string
   /** Mount point id (default: `loupe-annotator-host`). */
   hostId?: string
@@ -44,17 +49,27 @@ const DEFAULT_HOST_ID = "loupe-annotator-host"
  * @example
  * ```ts
  * import { installAnnotator } from "@loupe/dev-annotator"
- * import "@loupe/dev-annotator/styles.css?raw"
  *
  * if (process.env.NODE_ENV === "development") {
  *   installAnnotator({ appName: "My App" })
  * }
  * ```
+ *
+ * Styles are bundled into the package — no separate CSS import required.
  */
 export function installAnnotator(options: InstallAnnotatorOptions = {}): InstalledAnnotator {
   const hostId = options.hostId ?? DEFAULT_HOST_ID
   const existing = document.getElementById(hostId)
   if (existing) {
+    // Idempotent: a second install returns the existing handle so that callers
+    // don't end up with two FABs. But the new `options` are silently ignored,
+    // which is surprising during HMR / option tweaks. Warn so the case is
+    // visible — call `destroy()` then `installAnnotator()` again to apply.
+    console.warn(
+      "[loupe] installAnnotator: an instance is already mounted on " +
+        `#${hostId}. The new options are ignored. Call destroy() on the ` +
+        "previous handle before re-installing to apply new options.",
+    )
     return {
       host: existing,
       destroy: () => existing.remove(),
@@ -71,11 +86,10 @@ export function installAnnotator(options: InstallAnnotatorOptions = {}): Install
 
   const shadow = host.attachShadow({ mode: "open" })
 
-  // Inject CSS. Caller can pass `cssText` to override; the package's bundled
-  // styles.css works for most setups (just import it as a side-effect or
-  // pre-load and pass the text).
+  // Inject CSS. Defaults to the bundled styles inlined at build time (see
+  // scripts/build-css-module.mjs); caller can override via `options.cssText`.
   const styleEl = document.createElement("style")
-  styleEl.textContent = (options.cssText ?? "").replace(
+  styleEl.textContent = (options.cssText ?? bundledStyles).replace(
     /:root(\s*)\{/g,
     ":host, :root$1{",
   )

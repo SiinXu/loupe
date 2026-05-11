@@ -38,3 +38,6 @@ pnpm-debug.log*
 # Test outputs
 coverage/
 .nyc_output/
+
+# Generated CSS module (rebuilt from dist/styles.css on every build)
+packages/dev-annotator/src/styles.generated.ts

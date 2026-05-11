@@ -33,12 +33,13 @@ npm i -D @loupe/dev-annotator
 ```ts
 // renderer entry — main.tsx / index.tsx / wherever you mount React
 import { installAnnotator } from "@loupe/dev-annotator"
-import "@loupe/dev-annotator/styles.css"
 
 if (import.meta.env.DEV) {
   installAnnotator({ appName: "My App" })
 }
 ```
+
+Styles are inlined into the package and injected into Loupe's shadow root — no separate CSS import (a side-effect `import "@loupe/dev-annotator/styles.css"` would leak Tailwind preflight into your host page).
 
 Run `pnpm dev` like always → Loupe button appears bottom-right of your app → press `⌘⇧X` to annotate.
 

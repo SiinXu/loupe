@@ -28,23 +28,22 @@ Everything else (Radix primitives, lucide icons, html-to-image, theme CSS) is **
 
 ```ts
 import { installAnnotator } from "@loupe/dev-annotator"
-import "@loupe/dev-annotator/styles.css?inline" // or load styles however your bundler prefers
 
 if (process.env.NODE_ENV === "development") {
   installAnnotator({ appName: "My App" })
 }
 ```
 
+Styles are inlined into the package and injected into Loupe's shadow root automatically — no separate CSS import. A side-effect import like `import "@loupe/dev-annotator/styles.css"` would leak Tailwind preflight into your host page and *not* reach the shadow root.
+
 ### Electron — renderer side
 
 ```ts
 // renderer.ts (in your Electron renderer process)
 import { installAnnotator, createIpcAdapter } from "@loupe/dev-annotator"
-import cssText from "@loupe/dev-annotator/styles.css?raw"
 
 installAnnotator({
   appName: "My Electron App",
-  cssText,
   // Persist via main-process JSON file (set up below)
   storage: createIpcAdapter(window.loupeBridge),
 })

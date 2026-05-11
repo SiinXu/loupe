@@ -24,9 +24,10 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup && pnpm build:css",
+    "build": "pnpm build:css && pnpm build:css-module && tsup && pnpm build:css",
     "build:css": "tailwindcss -i src/styles.css -o dist/styles.css",
-    "dev": "tsup --watch"
+    "build:css-module": "node scripts/build-css-module.mjs",
+    "dev": "pnpm build:css && pnpm build:css-module && tsup --watch"
   },
   "keywords": [
     "annotation",
