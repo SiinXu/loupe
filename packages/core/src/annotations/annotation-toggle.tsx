@@ -5,6 +5,7 @@ import {
   Download,
   Upload,
   Clipboard,
+  GripVertical,
   List,
   Trash2,
   CheckCircle2,
@@ -33,6 +34,40 @@ interface AnnotationToggleProps {
   listOpen?: boolean
 }
 
+interface TogglePosition {
+  right: number
+  bottom: number
+}
+
+// Default matches the previous hardcoded `bottom-6 right-6` (1.5rem = 24px).
+const DEFAULT_TOGGLE_POSITION: TogglePosition = { right: 24, bottom: 24 }
+const TOGGLE_POSITION_KEY = "loupe:toggle-position"
+
+function loadTogglePosition(): TogglePosition {
+  try {
+    const raw = localStorage.getItem(TOGGLE_POSITION_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (typeof parsed?.right === "number" && typeof parsed?.bottom === "number") {
+        return { right: parsed.right, bottom: parsed.bottom }
+      }
+    }
+  } catch {
+    // Corrupted/unavailable storage — fall back to the default corner.
+  }
+  return DEFAULT_TOGGLE_POSITION
+}
+
+function clampTogglePosition(right: number, bottom: number, el: HTMLElement | null): TogglePosition {
+  const rect = el?.getBoundingClientRect()
+  const width = rect?.width ?? 88
+  const height = rect?.height ?? 44
+  return {
+    right: Math.min(Math.max(8, right), Math.max(8, window.innerWidth - width - 8)),
+    bottom: Math.min(Math.max(8, bottom), Math.max(8, window.innerHeight - height - 8)),
+  }
+}
+
 export function AnnotationToggle({ onToggleList, listOpen }: AnnotationToggleProps) {
   const {
     allAnnotations,
@@ -54,6 +89,55 @@ export function AnnotationToggle({ onToggleList, listOpen }: AnnotationTogglePro
   const [auditCount, setAuditCount] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // Draggable position (offsets from the bottom-right corner), persisted so the
+  // toolbar can be moved out of the way of app UI it happens to cover.
+  const [position, setPosition] = useState<TogglePosition>(loadTogglePosition)
+  const dragStart = useRef<{ x: number; y: number; right: number; bottom: number } | null>(null)
+
+  // Re-clamp on mount (stored position may be off-screen after a window
+  // shrink) and whenever the window resizes.
+  useEffect(() => {
+    const reclamp = () => setPosition((p) => clampTogglePosition(p.right, p.bottom, containerRef.current))
+    reclamp()
+    window.addEventListener("resize", reclamp)
+    return () => window.removeEventListener("resize", reclamp)
+  }, [])
+
+  const handleDragPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    dragStart.current = { x: e.clientX, y: e.clientY, right: position.right, bottom: position.bottom }
+  }
+
+  const handleDragPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const start = dragStart.current
+    if (!start) return
+    setPosition(
+      clampTogglePosition(
+        start.right - (e.clientX - start.x),
+        start.bottom - (e.clientY - start.y),
+        containerRef.current,
+      ),
+    )
+  }
+
+  const handleDragPointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    const start = dragStart.current
+    if (!start) return
+    dragStart.current = null
+    const next = clampTogglePosition(
+      start.right - (e.clientX - start.x),
+      start.bottom - (e.clientY - start.y),
+      containerRef.current,
+    )
+    setPosition(next)
+    try {
+      localStorage.setItem(TOGGLE_POSITION_KEY, JSON.stringify(next))
+    } catch {
+      // Storage unavailable — the position just won't persist across reloads.
+    }
+  }
 
   // Protect from Radix Dialog's inert/aria-hidden
   useEffect(() => {
@@ -219,10 +303,21 @@ export function AnnotationToggle({ onToggleList, listOpen }: AnnotationTogglePro
     <div
       ref={containerRef}
       data-annotation-ui
-      className="fixed bottom-6 right-6 pointer-events-auto"
-      style={{ zIndex: 99999 }}
+      className="fixed pointer-events-auto"
+      style={{ zIndex: 99999, right: position.right, bottom: position.bottom }}
     >
       <div className="flex items-center gap-1.5">
+        {/* Drag handle — move the toolbar when it covers app UI */}
+        <div
+          onPointerDown={handleDragPointerDown}
+          onPointerMove={handleDragPointerMove}
+          onPointerUp={handleDragPointerEnd}
+          onPointerCancel={handleDragPointerEnd}
+          className="flex h-9 w-5 cursor-grab touch-none select-none items-center justify-center rounded-full text-muted-foreground/60 hover:text-muted-foreground active:cursor-grabbing"
+          title={messages.dragToMove}
+        >
+          <GripVertical className="size-4" />
+        </div>
         {/* Dropdown menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
