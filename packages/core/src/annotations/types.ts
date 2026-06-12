@@ -134,6 +134,8 @@ export interface AnnotationMessages {
   clearAll: string
   enterAnnotationMode: string
   exitAnnotationMode: string
+  /** Tooltip on the floating toolbar's drag handle */
+  dragToMove: string
   /** Confirm dialog when wiping everything */
   confirmClearAll: string
   invalidImportFile: string
@@ -196,6 +198,7 @@ export const DEFAULT_ANNOTATION_MESSAGES: AnnotationMessages = {
   clearAll: "Clear All",
   enterAnnotationMode: "Enter annotation mode (⌘⇧X)",
   exitAnnotationMode: "Exit annotation mode (⌘⇧X)",
+  dragToMove: "Drag to move",
   confirmClearAll: "Clear all annotations? This cannot be undone.",
   invalidImportFile: "Invalid annotation JSON file.",
 }

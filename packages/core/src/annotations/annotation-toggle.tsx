@@ -5,6 +5,7 @@ import {
   Download,
   Upload,
   Clipboard,
+  GripVertical,
   List,
   Trash2,
   CheckCircle2,
@@ -33,6 +34,41 @@ interface AnnotationToggleProps {
   listOpen?: boolean
 }
 
+// Default matches the previous hardcoded `bottom-6 right-6` (1.5rem = 24px).
+const DEFAULT_TOGGLE_OFFSET = { right: 24, bottom: 24 }
+const TOGGLE_POSITION_KEY = "loupe:toggle-position"
+// Ignore micro-drags so a plain click never registers as a drag.
+const DRAG_THRESHOLD = 4
+
+function loadTogglePosition(): { right: number; bottom: number } {
+  try {
+    const raw = localStorage.getItem(TOGGLE_POSITION_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (typeof parsed?.right === "number" && typeof parsed?.bottom === "number") {
+        return { right: parsed.right, bottom: parsed.bottom }
+      }
+    }
+  } catch {
+    // Corrupted/unavailable storage — fall back to the default corner.
+  }
+  return DEFAULT_TOGGLE_OFFSET
+}
+
+function clampTogglePosition(
+  right: number,
+  bottom: number,
+  el: HTMLElement | null,
+): { right: number; bottom: number } {
+  const rect = el?.getBoundingClientRect()
+  const width = rect?.width ?? 96
+  const height = rect?.height ?? 44
+  return {
+    right: Math.min(Math.max(8, right), Math.max(8, window.innerWidth - width - 8)),
+    bottom: Math.min(Math.max(8, bottom), Math.max(8, window.innerHeight - height - 8)),
+  }
+}
+
 export function AnnotationToggle({ onToggleList, listOpen }: AnnotationToggleProps) {
   const {
     allAnnotations,
@@ -54,6 +90,59 @@ export function AnnotationToggle({ onToggleList, listOpen }: AnnotationTogglePro
   const [auditCount, setAuditCount] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // Draggable position (offsets from the bottom-right corner), persisted so
+  // the toolbar can be moved out of the way of app UI it happens to cover.
+  //
+  // Implementation note: uses plain mousedown + window listeners instead of
+  // pointer events with setPointerCapture. Pointer capture inside a shadow
+  // root sitting next to a Radix DropdownMenu portal has been a source of
+  // event-routing flakiness; the window-listener pattern is the dumbest
+  // possible draggable and cannot bleed into other components' event flow.
+  const [position, setPosition] = useState<{ right: number; bottom: number }>(loadTogglePosition)
+
+  // Re-clamp on mount (stored position may be off-screen after a window
+  // shrink) and whenever the window resizes.
+  useEffect(() => {
+    const reclamp = () => setPosition((p) => clampTogglePosition(p.right, p.bottom, containerRef.current))
+    reclamp()
+    window.addEventListener("resize", reclamp)
+    return () => window.removeEventListener("resize", reclamp)
+  }, [])
+
+  const handleDragMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return // left button only
+    e.preventDefault() // suppress text selection while dragging
+    const startX = e.clientX
+    const startY = e.clientY
+    const startRight = position.right
+    const startBottom = position.bottom
+    let moved = false
+    let latest = { right: startRight, bottom: startBottom }
+
+    const handleMove = (ev: MouseEvent) => {
+      const dx = ev.clientX - startX
+      const dy = ev.clientY - startY
+      if (!moved && Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return
+      moved = true
+      latest = clampTogglePosition(startRight - dx, startBottom - dy, containerRef.current)
+      setPosition(latest)
+    }
+
+    const handleUp = () => {
+      window.removeEventListener("mousemove", handleMove)
+      window.removeEventListener("mouseup", handleUp)
+      if (!moved) return
+      try {
+        localStorage.setItem(TOGGLE_POSITION_KEY, JSON.stringify(latest))
+      } catch {
+        // Storage unavailable — position just doesn't persist across reloads.
+      }
+    }
+
+    window.addEventListener("mousemove", handleMove)
+    window.addEventListener("mouseup", handleUp)
+  }
 
   // Protect from Radix Dialog's inert/aria-hidden
   useEffect(() => {
@@ -219,10 +308,18 @@ export function AnnotationToggle({ onToggleList, listOpen }: AnnotationTogglePro
     <div
       ref={containerRef}
       data-annotation-ui
-      className="fixed bottom-6 right-6 pointer-events-auto"
-      style={{ zIndex: 99999 }}
+      className="fixed pointer-events-auto"
+      style={{ zIndex: 99999, right: position.right, bottom: position.bottom }}
     >
       <div className="flex items-center gap-1.5">
+        {/* Drag handle — move the toolbar when it covers app UI */}
+        <div
+          onMouseDown={handleDragMouseDown}
+          className="flex h-9 w-5 cursor-grab select-none items-center justify-center rounded-full text-muted-foreground/60 hover:text-muted-foreground active:cursor-grabbing"
+          title={messages.dragToMove}
+        >
+          <GripVertical className="size-4" />
+        </div>
         {/* Dropdown menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
