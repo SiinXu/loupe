@@ -101,6 +101,21 @@ export function AnnotationOverlay() {
     }
   }, [page])
 
+  // ─── Clear activeBubbleId when its annotation disappears ──────────────
+  //
+  // An authoritative external snapshot (replaceAnnotations via cross-window
+  // sync, or a Clear All in another tab) can wipe the annotation that the
+  // bubble currently points at. The bubble stops rendering — but
+  // `activeBubbleId` stays set and silently gates every mousemove/click
+  // handler, leaving the user unable to hover-highlight or annotate anything
+  // until they press Escape. They have no visible signal that something is
+  // stuck, so they don't know to try Escape.
+  useEffect(() => {
+    if (activeBubbleId && !annotations.some((a) => a.id === activeBubbleId)) {
+      setActiveBubbleId(null)
+    }
+  }, [annotations, activeBubbleId])
+
   // ─── Keyboard shortcuts ────────────────────────────────────────────────
   //   ⌘+Shift+X  → toggle annotation mode
   //   ⌘+Shift+F  → copy AI prompt
