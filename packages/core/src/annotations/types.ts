@@ -219,6 +219,12 @@ export interface AnnotationContextValue {
   exportAnnotations: () => string
   /** Import annotations (merges, skips duplicates by id) */
   importAnnotations: (annotations: Annotation[]) => void
+  /**
+   * Replace the entire annotation set with an authoritative snapshot.
+   * Unlike importAnnotations, deletions in the snapshot are honored —
+   * use for external-storage sync, not for user-facing JSON import.
+   */
+  replaceAnnotations: (annotations: Annotation[]) => void
   /** Current page identifier */
   page: string
   /** CSS selector of the boundary element */

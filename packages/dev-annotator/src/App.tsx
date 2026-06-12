@@ -100,7 +100,8 @@ export function AnnotatorApp({
  * Bridges AnnotationProvider state ↔ external storage.
  *  - Hydrates from storage once on mount
  *  - Saves on every change
- *  - Optionally listens for cross-window updates
+ *  - Optionally listens for cross-window updates (incoming snapshots are
+ *    authoritative — see comment on the subscribe effect)
  */
 function Persistence({
   storage,
@@ -125,14 +126,15 @@ function Persistence({
     storage.save(ctx.allAnnotations).catch(console.error)
   }, [ctx.allAnnotations, storage])
 
+  // Cross-window sync: treat the incoming snapshot as authoritative (full
+  // replace). Merging only unseen ids resurrects deletions — a window holding
+  // stale in-memory annotations re-adds them on the next change and its
+  // save-on-change effect writes the deleted records back to storage.
+  const { replaceAnnotations } = ctx
   useEffect(() => {
     if (!storage.subscribe) return
-    return storage.subscribe((incoming) => {
-      const have = new Set(ctx.allAnnotations.map((a) => a.id))
-      const fresh = incoming.filter((a) => !have.has(a.id))
-      if (fresh.length > 0) ctx.importAnnotations(fresh)
-    })
-  }, [storage, ctx])
+    return storage.subscribe(replaceAnnotations)
+  }, [storage, replaceAnnotations])
 
   return null
 }

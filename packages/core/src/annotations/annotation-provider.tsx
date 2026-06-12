@@ -144,6 +144,10 @@ export function AnnotationProvider({
     })
   }, [])
 
+  const replaceAnnotations = useCallback((next: Annotation[]) => {
+    setAllAnnotations(next)
+  }, [])
+
   const value: AnnotationContextValue = {
     allAnnotations,
     annotations,
@@ -155,6 +159,7 @@ export function AnnotationProvider({
     resolveAnnotation,
     exportAnnotations,
     importAnnotations,
+    replaceAnnotations,
     page,
     boundarySelector,
     appName,
