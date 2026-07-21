@@ -1,0 +1,73 @@
+name: Release Extension
+
+on:
+  push:
+    tags:
+      - "extension-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Derive version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#extension-v}" >> "$GITHUB_OUTPUT"
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify manifest version matches tag
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          PKG_VERSION="$(node -p "require('./packages/extension/package.json').version")"
+          if [ "$PKG_VERSION" != "$VERSION" ]; then
+            echo "::error::Tag is extension-v$VERSION but packages/extension/package.json is $PKG_VERSION. Bump the package version before tagging."
+            exit 1
+          fi
+
+      - name: Build extension
+        run: pnpm --filter @loupe/extension build
+
+      - name: Package ZIP
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          cd packages/extension/dist
+          zip -r "$GITHUB_WORKSPACE/loupe-extension-$VERSION.zip" . -x '*.map'
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          ASSET="loupe-extension-$VERSION.zip"
+          cat > notes.md <<EOF
+          ## Install (no Chrome Web Store needed)
+
+          1. Download **$ASSET** below
+          2. Unzip it
+          3. Open \`chrome://extensions\`
+          4. Turn on **Developer mode** (top-right)
+          5. Click **Load unpacked** and select the unzipped folder
+
+          To update later: download the new ZIP, unzip over the old folder, then click the reload icon on the Loupe card in \`chrome://extensions\`.
+
+          Works in Chrome, Edge, Brave, and other Chromium browsers.
+          EOF
+          gh release create "$TAG" "$ASSET" \
+            --title "Loupe Extension v$VERSION" \
+            --notes-file notes.md

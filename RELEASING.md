@@ -1,7 +1,8 @@
 # Releasing
 
-Only `@loupe/dev-annotator` is published to npm. `@loupe/core` is marked `private`
-and `@loupe/extension` is published via Chrome Web Store (separate process).
+Only `@loupe/dev-annotator` is published to npm. `@loupe/core` is marked `private`.
+`@loupe/extension` is distributed two ways: the Chrome Web Store (separate manual
+process) and GitHub Releases (automated — see "Releasing the browser extension").
 
 ## One-time setup
 
@@ -54,6 +55,37 @@ mkdir /tmp/loupe-smoke && cd /tmp/loupe-smoke
 npm init -y && npm i -D @loupe/dev-annotator react react-dom
 node -e "console.log(require('@loupe/dev-annotator'))"
 ```
+
+## Releasing the browser extension
+
+The extension ships to GitHub Releases automatically via
+`.github/workflows/release-extension.yml`. It triggers on any `extension-v*` tag,
+builds the extension, zips `dist/` (minus sourcemaps), and creates a release with
+the ZIP attached plus install instructions.
+
+Extension versions are **independent** of the npm SDK version — they use their own
+`extension-v*` tag namespace so the two don't collide.
+
+```bash
+# 1. Bump packages/extension/package.json "version" (the manifest reads it).
+#    The workflow fails the release if the tag and package.json disagree.
+
+# 2. Commit the bump.
+git add packages/extension/package.json
+git commit -m "release: extension v<X.Y.Z>"
+
+# 3. Tag and push — this fires the workflow.
+git tag extension-v<X.Y.Z>
+git push origin main --tags
+```
+
+Watch the run with `gh run watch` (or the Actions tab). When it's green, the release
+is live at `https://github.com/SiinXu/loupe/releases/tag/extension-v<X.Y.Z>` with
+`loupe-extension-<X.Y.Z>.zip` attached. Users install it via "Load unpacked" — no
+Chrome Web Store needed.
+
+To test the workflow end-to-end without a "real" release, tag a prerelease like
+`extension-v0.1.0-rc.1`; delete the release + tag afterward if you don't want it kept.
 
 ## Notes on what NOT to publish
 
